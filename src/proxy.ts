@@ -4,7 +4,7 @@ import { getToken } from "next-auth/jwt"
 
 const publicPaths = ["/login", "/invite", "/reset-password", "/api/auth", "/api/cron"]
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
   const isPublic = publicPaths.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`)
