@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { getToken } from "next-auth/jwt"
 
-const publicPaths = ["/login", "/invite", "/reset-password", "/api/auth"]
+const publicPaths = ["/login", "/invite", "/reset-password", "/api/auth", "/api/cron"]
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
@@ -33,9 +33,9 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  if (token && (pathname === "/login" || pathname === "/")) {
+  if (token && pathname === "/login") {
     const url = req.nextUrl.clone()
-    url.pathname = "/requests"
+    url.pathname = "/"
     return NextResponse.redirect(url)
   }
 

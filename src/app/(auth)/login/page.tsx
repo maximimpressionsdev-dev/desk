@@ -5,10 +5,12 @@ import { signIn } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
+import { Ticket } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { ThemeToggle } from "@/components/shared/theme-toggle"
 
 function LoginForm() {
   const router = useRouter()
@@ -30,21 +32,24 @@ function LoginForm() {
       toast.error("Invalid email or password")
       return
     }
-    router.push(search.get("callbackUrl") || "/requests")
+    router.push(search.get("callbackUrl") || "/")
     router.refresh()
   }
 
   return (
-    <Card className="w-full max-w-md">
+    <Card className="border-border/50 bg-card/40 w-full max-w-md shadow-none ring-1 ring-foreground/10">
       <CardHeader>
-        <CardTitle>Sign in to Company Tickets</CardTitle>
-        <p className="mt-1 text-sm text-slate-500">
+        <div className="bg-foreground text-background mb-3 flex size-10 items-center justify-center rounded-lg">
+          <Ticket className="size-5" />
+        </div>
+        <CardTitle className="text-xl">Sign in</CardTitle>
+        <CardDescription>
           Submit and track internal work requests across departments.
-        </p>
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form className="space-y-4" onSubmit={onSubmit}>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label htmlFor="email">Email</Label>
             <Input
               id="email"
@@ -55,7 +60,7 @@ function LoginForm() {
               required
             />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label htmlFor="password">Password</Label>
             <Input
               id="password"
@@ -66,12 +71,12 @@ function LoginForm() {
               required
             />
           </div>
-          <Button className="w-full" disabled={loading}>
+          <Button className="w-full" disabled={loading} type="submit">
             {loading ? "Signing in…" : "Sign in"}
           </Button>
         </form>
-        <p className="mt-4 text-center text-sm text-slate-500">
-          <Link href="/reset-password" className="underline">
+        <p className="text-muted-foreground mt-4 text-center text-sm">
+          <Link href="/reset-password" className="hover:text-foreground underline-offset-4 hover:underline">
             Forgot password?
           </Link>
         </p>
@@ -82,8 +87,11 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <Suspense fallback={<div className="text-sm text-slate-500">Loading…</div>}>
+    <div className="bg-background relative flex min-h-screen items-center justify-center px-4">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+      <Suspense fallback={<div className="text-muted-foreground text-sm">Loading…</div>}>
         <LoginForm />
       </Suspense>
     </div>

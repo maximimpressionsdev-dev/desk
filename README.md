@@ -31,11 +31,26 @@ Default admin (from `.env`):
 
 ## App surfaces
 
-- **My requests** — tickets you filed
-- **My work** — tickets assigned to you
-- **Queues** — department agent queues
-- **New request** — submit to any department
-- **Admin** — invites, departments, membership, ticket types
+- **Inbox** (`/`) — For me / I requested / Queue, with filters, overdue badges, bulk claim/close
+- **Ticket sheet** — claim, status, reassign, watch, internal notes, canned replies, links, @mentions
+- **Admin** — invites, departments, membership, ticket types, notify email, canned replies
+
+Shortcuts: `N` new ticket · `C` claim open ticket (when sheet is open)
+
+## Cron jobs
+
+Set `CRON_SECRET` in `.env`, then:
+
+```bash
+curl -X POST -H "Authorization: Bearer $CRON_SECRET" \
+  "http://localhost:3000/api/cron?job=overdue"
+
+curl -X POST -H "Authorization: Bearer $CRON_SECRET" \
+  "http://localhost:3000/api/cron?job=digest"
+```
+
+- `overdue` — emails assignees/requesters for past-due open tickets
+- `digest` — daily summary of open assigned work
 
 ## Docker (full stack)
 
@@ -46,3 +61,5 @@ docker compose up --build
 ## FactoryOS cutover
 
 After this app is live, remove Ticket Center from `factoryos-ui` and point users here.
+
+See [docs/CUTOVER.md](docs/CUTOVER.md). FactoryOS now shows a move notice at `/ticketing` and links via `NEXT_PUBLIC_TICKETS_APP_URL`.

@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server"
-import { jsonError, requireSession } from "@/server/auth/guards"
+import { jsonError, requireSession, isDepartmentAgent } from "@/server/auth/guards"
 import {
   assertCanViewTicket,
   getTicketByCode,
   getTicketTimeline,
 } from "@/server/tickets/service"
+import {
+  listCannedReplies,
+  listTicketLinks,
+  listWatchers,
+} from "@/server/tickets/ops"
 
 type Params = { params: Promise<{ code: string }> }
 
@@ -19,7 +24,18 @@ export async function GET(_req: Request, { params }: Params) {
       isAdmin,
       ticket: detail.ticket,
     })
-    const timeline = await getTicketTimeline(detail.ticket.id)
+
+    const canAgent =
+      isAdmin || (await isDepartmentAgent(userId, detail.ticket.departmentId, false))
+    const timeline = await getTicketTimeline(detail.ticket.id, {
+      includeInternal: canAgent,
+    })
+    const watchers = await listWatchers(detail.ticket.id)
+    const links = await listTicketLinks(detail.ticket.id)
+    const canned = canAgent
+      ? await listCannedReplies(detail.ticket.departmentId)
+      : []
+
     return NextResponse.json({
       ticket: {
         ...detail.ticket,
@@ -32,6 +48,10 @@ export async function GET(_req: Request, { params }: Params) {
         ticketTypeName: detail.ticketTypeName,
       },
       ...timeline,
+      watchers,
+      links,
+      cannedReplies: canned,
+      canAgentAct: canAgent,
     })
   } catch (error) {
     return jsonError(error)

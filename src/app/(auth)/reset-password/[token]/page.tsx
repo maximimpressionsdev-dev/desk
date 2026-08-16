@@ -5,9 +5,10 @@ import { useParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { api } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { ThemeToggle } from "@/components/shared/theme-toggle"
 
 export default function ResetPasswordTokenPage() {
   const { token } = useParams<{ token: string }>()
@@ -30,14 +31,18 @@ export default function ResetPasswordTokenPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <Card className="w-full max-w-md">
+    <div className="bg-background relative flex min-h-screen items-center justify-center px-4">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+      <Card className="border-border/50 bg-card/40 w-full max-w-md ring-1 ring-foreground/10">
         <CardHeader>
-          <CardTitle>Choose a new password</CardTitle>
+          <CardTitle className="text-xl">Choose a new password</CardTitle>
+          <CardDescription>Use at least 8 characters.</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={onSubmit}>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="password">New password</Label>
               <Input
                 id="password"
@@ -48,7 +53,7 @@ export default function ResetPasswordTokenPage() {
                 required
               />
             </div>
-            <Button className="w-full" disabled={loading}>
+            <Button className="w-full" disabled={loading} type="submit">
               Update password
             </Button>
           </form>

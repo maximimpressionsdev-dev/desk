@@ -7,6 +7,7 @@ import {
   ticketComments,
   ticketEvents,
   ticketTypes,
+  ticketWatchers,
   tickets,
   users,
   type TicketStatus,
@@ -86,6 +87,14 @@ export async function assertCanViewTicket(opts: {
   if (opts.ticket.assigneeId === opts.userId) return
   const agent = await isDepartmentAgent(opts.userId, opts.ticket.departmentId, false)
   if (agent) return
+  const [watcher] = await db
+    .select({ id: ticketWatchers.id })
+    .from(ticketWatchers)
+    .where(
+      and(eq(ticketWatchers.ticketId, opts.ticket.id), eq(ticketWatchers.userId, opts.userId))
+    )
+    .limit(1)
+  if (watcher) return
   throw new ApiError(403, "Forbidden")
 }
 
@@ -106,6 +115,7 @@ export async function listTicketsForUser(opts: {
   scope: "mine" | "assigned" | "queue"
   departmentId?: number
   status?: TicketStatus
+  priority?: string
   overdue?: boolean
 }) {
   const conditions = []
@@ -133,6 +143,7 @@ export async function listTicketsForUser(opts: {
   }
 
   if (opts.status) conditions.push(eq(tickets.status, opts.status))
+  if (opts.priority) conditions.push(eq(tickets.priority, opts.priority as "LOW" | "MEDIUM" | "HIGH" | "URGENT"))
   if (opts.overdue) {
     conditions.push(
       and(
@@ -444,6 +455,7 @@ export async function addComment(input: {
   ticketId: number
   body: string
   isProgress?: boolean
+  isInternal?: boolean
 }) {
   const [ticket] = await db.select().from(tickets).where(eq(tickets.id, input.ticketId)).limit(1)
   if (!ticket) throw new ApiError(404, "Ticket not found")
@@ -453,7 +465,10 @@ export async function addComment(input: {
     ticket,
   })
 
-  if (input.isProgress) {
+  const isInternal = Boolean(input.isInternal)
+  const isProgress = Boolean(input.isProgress) && !isInternal
+
+  if (isProgress || isInternal) {
     await assertCanActOnTicket({
       userId: input.actorId,
       isAdmin: input.isAdmin,
@@ -470,7 +485,8 @@ export async function addComment(input: {
       ticketId: ticket.id,
       authorId: input.actorId,
       body,
-      isProgress: Boolean(input.isProgress),
+      isProgress,
+      isInternal,
     })
     .returning()
 
@@ -482,20 +498,27 @@ export async function addComment(input: {
   await recordEvent({
     ticketId: ticket.id,
     actorId: input.actorId,
-    type: input.isProgress ? "PROGRESS" : "COMMENT",
-    message: input.isProgress ? "Progress update posted" : "Comment added",
+    type: isInternal ? "INTERNAL" : isProgress ? "PROGRESS" : "COMMENT",
+    message: isInternal
+      ? "Internal note added"
+      : isProgress
+        ? "Progress update posted"
+        : "Comment added",
   })
 
-  if (input.isProgress && ticket.requesterId !== input.actorId) {
-    const [requester] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, ticket.requesterId))
-      .limit(1)
-    if (requester) {
+  const { resolveMentions, addWatcher, notifyWatchers } = await import("@/server/tickets/ops")
+  const mentioned = await resolveMentions(body)
+  for (const user of mentioned) {
+    await addWatcher({
+      actorId: input.actorId,
+      isAdmin: input.isAdmin,
+      ticketId: ticket.id,
+      userId: user.id,
+    })
+    if (user.id !== input.actorId) {
       void sendEmail({
-        to: requester.email,
-        subject: `[${ticket.code}] Progress update`,
+        to: user.email,
+        subject: `[${ticket.code}] You were mentioned`,
         html: ticketUpdatedEmailHtml({
           code: ticket.code,
           title: ticket.title,
@@ -506,10 +529,44 @@ export async function addComment(input: {
     }
   }
 
+  if (!isInternal) {
+    const exclude = [input.actorId, ...mentioned.map((m) => m.id)]
+    if (isProgress && ticket.requesterId !== input.actorId) {
+      const [requester] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, ticket.requesterId))
+        .limit(1)
+      if (requester) {
+        void sendEmail({
+          to: requester.email,
+          subject: `[${ticket.code}] Progress update`,
+          html: ticketUpdatedEmailHtml({
+            code: ticket.code,
+            title: ticket.title,
+            summary: body.slice(0, 280),
+          }),
+          text: body,
+        })
+        exclude.push(requester.id)
+      }
+    }
+    await notifyWatchers({
+      ticketId: ticket.id,
+      code: ticket.code,
+      title: ticket.title,
+      summary: isProgress ? `Progress: ${body.slice(0, 200)}` : `Comment: ${body.slice(0, 200)}`,
+      excludeUserIds: exclude,
+    })
+  }
+
   return comment
 }
 
-export async function getTicketTimeline(ticketId: number) {
+export async function getTicketTimeline(
+  ticketId: number,
+  opts?: { includeInternal?: boolean }
+) {
   const events = await db
     .select({
       id: ticketEvents.id,
@@ -529,13 +586,18 @@ export async function getTicketTimeline(ticketId: number) {
       id: ticketComments.id,
       body: ticketComments.body,
       isProgress: ticketComments.isProgress,
+      isInternal: ticketComments.isInternal,
       createdAt: ticketComments.createdAt,
       authorName: users.name,
       authorId: ticketComments.authorId,
     })
     .from(ticketComments)
     .innerJoin(users, eq(ticketComments.authorId, users.id))
-    .where(eq(ticketComments.ticketId, ticketId))
+    .where(
+      opts?.includeInternal
+        ? eq(ticketComments.ticketId, ticketId)
+        : and(eq(ticketComments.ticketId, ticketId), eq(ticketComments.isInternal, false))
+    )
     .orderBy(desc(ticketComments.createdAt))
 
   const files = await db

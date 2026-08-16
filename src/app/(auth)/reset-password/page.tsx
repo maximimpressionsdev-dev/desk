@@ -5,9 +5,10 @@ import Link from "next/link"
 import { toast } from "sonner"
 import { api } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { ThemeToggle } from "@/components/shared/theme-toggle"
 
 export default function ResetRequestPage() {
   const [email, setEmail] = useState("")
@@ -27,14 +28,18 @@ export default function ResetRequestPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <Card className="w-full max-w-md">
+    <div className="bg-background relative flex min-h-screen items-center justify-center px-4">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+      <Card className="border-border/50 bg-card/40 w-full max-w-md ring-1 ring-foreground/10">
         <CardHeader>
-          <CardTitle>Reset password</CardTitle>
+          <CardTitle className="text-xl">Reset password</CardTitle>
+          <CardDescription>We&apos;ll email a one-time link if the account exists.</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={onSubmit}>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
@@ -44,12 +49,12 @@ export default function ResetRequestPage() {
                 required
               />
             </div>
-            <Button className="w-full" disabled={loading}>
+            <Button className="w-full" disabled={loading} type="submit">
               Send reset link
             </Button>
           </form>
           <p className="mt-4 text-center text-sm">
-            <Link href="/login" className="underline">
+            <Link href="/login" className="text-muted-foreground hover:text-foreground underline-offset-4 hover:underline">
               Back to sign in
             </Link>
           </p>

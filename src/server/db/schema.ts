@@ -164,6 +164,7 @@ export const ticketComments = pgTable(
       .references(() => users.id),
     body: text("body").notNull(),
     isProgress: boolean("is_progress").notNull().default(false),
+    isInternal: boolean("is_internal").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("ticket_comments_ticket_idx").on(t.ticketId)]
@@ -202,6 +203,66 @@ export const attachments = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("attachments_ticket_idx").on(t.ticketId)]
+)
+
+export const ticketWatchers = pgTable(
+  "ticket_watchers",
+  {
+    id: serial("id").primaryKey(),
+    ticketId: integer("ticket_id")
+      .notNull()
+      .references(() => tickets.id, { onDelete: "cascade" }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("ticket_watchers_uidx").on(t.ticketId, t.userId),
+    index("ticket_watchers_user_idx").on(t.userId),
+  ]
+)
+
+export const cannedReplies = pgTable(
+  "canned_replies",
+  {
+    id: serial("id").primaryKey(),
+    departmentId: integer("department_id")
+      .notNull()
+      .references(() => departments.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 120 }).notNull(),
+    body: text("body").notNull(),
+    createdById: integer("created_by_id")
+      .notNull()
+      .references(() => users.id),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("canned_replies_dept_idx").on(t.departmentId)]
+)
+
+export const ticketLinkTypeEnum = pgEnum("ticket_link_type", ["related", "blocks", "blocked_by"])
+
+export const ticketLinks = pgTable(
+  "ticket_links",
+  {
+    id: serial("id").primaryKey(),
+    fromTicketId: integer("from_ticket_id")
+      .notNull()
+      .references(() => tickets.id, { onDelete: "cascade" }),
+    toTicketId: integer("to_ticket_id")
+      .notNull()
+      .references(() => tickets.id, { onDelete: "cascade" }),
+    type: ticketLinkTypeEnum("type").notNull().default("related"),
+    createdById: integer("created_by_id")
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("ticket_links_uidx").on(t.fromTicketId, t.toTicketId, t.type),
+    index("ticket_links_to_idx").on(t.toTicketId),
+  ]
 )
 
 export type User = typeof users.$inferSelect

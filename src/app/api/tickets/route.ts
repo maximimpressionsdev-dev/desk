@@ -14,6 +14,7 @@ export async function GET(req: Request) {
       ? Number(params.get("departmentId"))
       : undefined
     const status = params.get("status") as TicketStatus | null
+    const priority = params.get("priority") || undefined
     const overdue = params.get("overdue") === "1"
 
     if (status && !TICKET_STATUSES.includes(status)) {
@@ -26,6 +27,7 @@ export async function GET(req: Request) {
       scope,
       departmentId,
       status: status ?? undefined,
+      priority,
       overdue,
     })
     return NextResponse.json({ tickets })
