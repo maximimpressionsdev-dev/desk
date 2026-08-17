@@ -114,5 +114,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ job: "digest", assignees: byAssignee.size, sent })
   }
 
+  if (job === "sync") {
+    const { redisConfigured } = await import("@/server/redis/client")
+    if (!redisConfigured()) {
+      return NextResponse.json({ error: "Redis is not configured" }, { status: 400 })
+    }
+    const { syncDirectoryFromRedis } = await import("@/server/redis/sync")
+    const result = await syncDirectoryFromRedis()
+    return NextResponse.json({ job: "sync", ...result })
+  }
+
   return NextResponse.json({ error: "Unknown job" }, { status: 400 })
 }

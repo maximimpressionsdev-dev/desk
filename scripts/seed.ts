@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm"
 import { db } from "../src/server/db"
 import { departmentMembers, departments, ticketTypes, users } from "../src/server/db/schema"
 import { hashPassword } from "../src/server/auth/password"
+import { seedIssueCatalog } from "../src/server/issues/catalog"
 
 async function main() {
   const email = (process.env.ADMIN_EMAIL || "admin@company.local").toLowerCase()
@@ -74,6 +75,8 @@ async function main() {
     }
   }
 
+  const issues = await seedIssueCatalog()
+  console.log("Issue catalog:", issues)
   console.log("Seed complete")
   process.exit(0)
 }

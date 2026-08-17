@@ -39,11 +39,20 @@ export const users = pgTable(
     passwordHash: text("password_hash"),
     role: userRoleEnum("role").notNull().default("USER"),
     active: boolean("active").notNull().default(true),
+    externalId: integer("external_id"),
+    employeeNumber: varchar("employee_number", { length: 32 }),
+    username: varchar("username", { length: 80 }),
+    nic: varchar("nic", { length: 32 }),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("users_email_uidx").on(t.email)]
+  (t) => [
+    uniqueIndex("users_email_uidx").on(t.email),
+    uniqueIndex("users_external_id_uidx").on(t.externalId),
+    uniqueIndex("users_employee_number_uidx").on(t.employeeNumber),
+    index("users_username_idx").on(t.username),
+  ]
 )
 
 export const invites = pgTable(
@@ -82,10 +91,14 @@ export const departments = pgTable(
     name: varchar("name", { length: 200 }).notNull(),
     active: boolean("active").notNull().default(true),
     notifyEmail: varchar("notify_email", { length: 320 }),
+    externalId: integer("external_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("departments_code_uidx").on(t.code)]
+  (t) => [
+    uniqueIndex("departments_code_uidx").on(t.code),
+    uniqueIndex("departments_external_id_uidx").on(t.externalId),
+  ]
 )
 
 export const departmentMembers = pgTable(
@@ -120,6 +133,40 @@ export const ticketTypes = pgTable(
   (t) => [index("ticket_types_dept_idx").on(t.departmentId)]
 )
 
+export const issueCategories = pgTable(
+  "issue_categories",
+  {
+    id: serial("id").primaryKey(),
+    departmentId: integer("department_id").references(() => departments.id, {
+      onDelete: "cascade",
+    }),
+    nameEn: varchar("name_en", { length: 200 }).notNull(),
+    nameSi: varchar("name_si", { length: 200 }).notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("issue_categories_dept_idx").on(t.departmentId)]
+)
+
+export const issueReasons = pgTable(
+  "issue_reasons",
+  {
+    id: serial("id").primaryKey(),
+    categoryId: integer("category_id")
+      .notNull()
+      .references(() => issueCategories.id, { onDelete: "cascade" }),
+    nameEn: varchar("name_en", { length: 200 }).notNull(),
+    nameSi: varchar("name_si", { length: 200 }).notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("issue_reasons_category_idx").on(t.categoryId)]
+)
+
 export const tickets = pgTable(
   "tickets",
   {
@@ -134,6 +181,8 @@ export const tickets = pgTable(
       .notNull()
       .references(() => departments.id),
     ticketTypeId: integer("ticket_type_id").references(() => ticketTypes.id),
+    issueCategoryId: integer("issue_category_id").references(() => issueCategories.id),
+    issueReasonId: integer("issue_reason_id").references(() => issueReasons.id),
     requesterId: integer("requester_id")
       .notNull()
       .references(() => users.id),
@@ -149,6 +198,7 @@ export const tickets = pgTable(
     index("tickets_dept_status_updated_idx").on(t.departmentId, t.status, t.updatedAt),
     index("tickets_assignee_status_idx").on(t.assigneeId, t.status),
     index("tickets_requester_created_idx").on(t.requesterId, t.createdAt),
+    index("tickets_issue_reason_idx").on(t.issueReasonId),
   ]
 )
 
@@ -271,3 +321,5 @@ export type Ticket = typeof tickets.$inferSelect
 export type TicketStatus = (typeof ticketStatusEnum.enumValues)[number]
 export type TicketPriority = (typeof ticketPriorityEnum.enumValues)[number]
 export type UserRole = (typeof userRoleEnum.enumValues)[number]
+export type IssueCategory = typeof issueCategories.$inferSelect
+export type IssueReason = typeof issueReasons.$inferSelect

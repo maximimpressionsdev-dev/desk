@@ -99,6 +99,10 @@ export function TicketDetailSheet({
         assigneeId: number | null
         assigneeName: string | null
         ticketTypeName: string | null
+        issueCategoryNameEn: string | null
+        issueCategoryNameSi: string | null
+        issueReasonNameEn: string | null
+        issueReasonNameSi: string | null
         dueAt: string | null
         createdAt: string
       }
@@ -325,7 +329,20 @@ export function TicketDetailSheet({
 
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-xl border bg-muted/30 p-3 text-xs">
                 <Meta label="Department" value={ticket.departmentName} />
-                <Meta label="Type" value={ticket.ticketTypeName || "—"} />
+                <Meta
+                  label="Main issue"
+                  value={
+                    ticket.issueCategoryNameEn
+                      ? bilingual(ticket.issueCategoryNameEn, ticket.issueCategoryNameSi || "")
+                      : ticket.ticketTypeName || "—"
+                  }
+                />
+                {ticket.issueReasonNameEn ? (
+                  <Meta
+                    label="Sub issue"
+                    value={bilingual(ticket.issueReasonNameEn, ticket.issueReasonNameSi || "")}
+                  />
+                ) : null}
                 <Meta label="From" value={ticket.requesterName} />
                 <Meta label="Owner" value={ticket.assigneeName || "Unassigned"} />
                 {ticket.dueAt ? <Meta label="Due" value={formatDateTime(ticket.dueAt)} /> : null}
@@ -665,6 +682,11 @@ export function TicketDetailSheet({
       </SheetContent>
     </Sheet>
   )
+}
+
+function bilingual(en: string, si: string) {
+  if (!si || en === si) return en
+  return `${en} · ${si}`
 }
 
 function Meta({ label, value }: { label: string; value: string }) {

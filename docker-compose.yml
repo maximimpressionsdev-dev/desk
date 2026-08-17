@@ -23,8 +23,9 @@ services:
       - "3000:3000"
     environment:
       DATABASE_URL: postgresql://tickets:tickets@db:5432/tickets
-      AUTH_SECRET: ${AUTH_SECRET:-dev-secret-change-in-production-please-use-long-string}
-      AUTH_URL: ${AUTH_URL:-http://localhost:3000}
+      AUTH_SECRET: ${AUTH_SECRET:-nextauth_secret_key}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-nextauth_secret_key}
+      AUTH_TRUST_HOST: "true"
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@company.local}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin12345}
       ADMIN_NAME: ${ADMIN_NAME:-System Admin}
@@ -36,6 +37,10 @@ services:
       UPLOAD_DIR: /app/uploads
       MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-10485760}
       NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Company Tickets}
+      REDIS_HOST: ${REDIS_HOST:-}
+      REDIS_PORT: ${REDIS_PORT:-63790}
+      REDIS_DB: ${REDIS_DB:-3}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
     volumes:
       - tickets_uploads:/app/uploads
     depends_on:

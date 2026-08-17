@@ -4,6 +4,8 @@ import {
   attachments,
   departmentMembers,
   departments,
+  issueCategories,
+  issueReasons,
   ticketComments,
   ticketEvents,
   ticketTypes,
@@ -14,6 +16,7 @@ import {
 } from "@/server/db/schema"
 import { ApiError, isDepartmentAgent } from "@/server/auth/guards"
 import { allowedNextStatuses, type TicketPriority } from "@/lib/ticket-constants"
+import { issueLabel } from "@/server/issues/catalog"
 import { sendEmail } from "@/server/email"
 import {
   ticketAssignedEmailHtml,
@@ -52,11 +55,17 @@ export async function getTicketByCode(code: string) {
       requesterName: users.name,
       requesterEmail: users.email,
       ticketTypeName: ticketTypes.name,
+      issueCategoryNameEn: issueCategories.nameEn,
+      issueCategoryNameSi: issueCategories.nameSi,
+      issueReasonNameEn: issueReasons.nameEn,
+      issueReasonNameSi: issueReasons.nameSi,
     })
     .from(tickets)
     .innerJoin(departments, eq(tickets.departmentId, departments.id))
     .innerJoin(users, eq(tickets.requesterId, users.id))
     .leftJoin(ticketTypes, eq(tickets.ticketTypeId, ticketTypes.id))
+    .leftJoin(issueCategories, eq(tickets.issueCategoryId, issueCategories.id))
+    .leftJoin(issueReasons, eq(tickets.issueReasonId, issueReasons.id))
     .where(eq(tickets.code, code))
     .limit(1)
 
@@ -199,7 +208,9 @@ export async function createTicket(input: {
   userId: number
   departmentId: number
   ticketTypeId?: number | null
-  title: string
+  issueCategoryId?: number | null
+  issueReasonId?: number | null
+  title?: string
   description?: string
   priority?: TicketPriority
   dueAt?: Date | null
@@ -226,6 +237,54 @@ export async function createTicket(input: {
     if (!tt) throw new ApiError(400, "Invalid ticket type")
   }
 
+  let issueCategory: typeof issueCategories.$inferSelect | null = null
+  let issueReason: typeof issueReasons.$inferSelect | null = null
+  if (input.issueReasonId) {
+    const [reason] = await db
+      .select()
+      .from(issueReasons)
+      .where(and(eq(issueReasons.id, input.issueReasonId), eq(issueReasons.active, true)))
+      .limit(1)
+    if (!reason) throw new ApiError(400, "Invalid sub issue")
+    const [category] = await db
+      .select()
+      .from(issueCategories)
+      .where(and(eq(issueCategories.id, reason.categoryId), eq(issueCategories.active, true)))
+      .limit(1)
+    if (!category) throw new ApiError(400, "Invalid main issue")
+    if (
+      category.departmentId != null &&
+      category.departmentId !== input.departmentId
+    ) {
+      throw new ApiError(400, "Issue does not belong to this department")
+    }
+    issueReason = reason
+    issueCategory = category
+  } else if (input.issueCategoryId) {
+    const [category] = await db
+      .select()
+      .from(issueCategories)
+      .where(and(eq(issueCategories.id, input.issueCategoryId), eq(issueCategories.active, true)))
+      .limit(1)
+    if (!category) throw new ApiError(400, "Invalid main issue")
+    if (
+      category.departmentId != null &&
+      category.departmentId !== input.departmentId
+    ) {
+      throw new ApiError(400, "Issue does not belong to this department")
+    }
+    issueCategory = category
+  }
+
+  const title =
+    input.title?.trim() ||
+    (issueCategory && issueReason
+      ? `${issueLabel(issueCategory.nameEn, issueCategory.nameSi)} — ${issueLabel(issueReason.nameEn, issueReason.nameSi)}`
+      : issueCategory
+        ? issueLabel(issueCategory.nameEn, issueCategory.nameSi)
+        : "")
+  if (title.length < 3) throw new ApiError(400, "Select an issue or enter a title")
+
   const [requester] = await db.select().from(users).where(eq(users.id, input.userId)).limit(1)
   if (!requester) throw new ApiError(401, "Unauthorized")
 
@@ -234,12 +293,14 @@ export async function createTicket(input: {
     .insert(tickets)
     .values({
       code,
-      title: input.title.trim(),
+      title,
       description: input.description?.trim() || "",
       priority: input.priority ?? "MEDIUM",
       status: "OPEN",
       departmentId: input.departmentId,
       ticketTypeId: input.ticketTypeId ?? null,
+      issueCategoryId: issueCategory?.id ?? null,
+      issueReasonId: issueReason?.id ?? null,
       requesterId: input.userId,
       dueAt: input.dueAt ?? null,
     })

@@ -12,6 +12,21 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ThemeToggle } from "@/components/shared/theme-toggle"
 
+function safeNextPath(raw: string | null) {
+  if (!raw) return "/"
+  try {
+    const path = raw.startsWith("/") && !raw.startsWith("//")
+      ? raw
+      : new URL(raw).pathname + new URL(raw).search
+    if (!path.startsWith("/") || path.startsWith("//") || path.startsWith("/login")) {
+      return "/"
+    }
+    return path
+  } catch {
+    return "/"
+  }
+}
+
 function LoginForm() {
   const router = useRouter()
   const search = useSearchParams()
@@ -29,10 +44,10 @@ function LoginForm() {
     })
     setLoading(false)
     if (res?.error) {
-      toast.error("Invalid email or password")
+      toast.error("Invalid username, employee number, or password")
       return
     }
-    router.push(search.get("callbackUrl") || "/")
+    router.push(safeNextPath(search.get("callbackUrl")))
     router.refresh()
   }
 
@@ -44,24 +59,25 @@ function LoginForm() {
         </div>
         <CardTitle className="text-xl">Sign in</CardTitle>
         <CardDescription>
-          Submit and track internal work requests across departments.
+          Use your company username or employee number. Password can be your account password or
+          NIC / ID number.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form className="space-y-4" onSubmit={onSubmit}>
           <div className="space-y-1.5">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">Username or employee number</Label>
             <Input
               id="email"
-              type="email"
-              autoComplete="email"
+              type="text"
+              autoComplete="username"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">Password or ID number</Label>
             <Input
               id="password"
               type="password"

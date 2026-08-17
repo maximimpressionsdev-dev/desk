@@ -4,7 +4,7 @@ import { getToken } from "next-auth/jwt"
 
 const publicPaths = ["/login", "/invite", "/reset-password", "/api/auth", "/api/cron"]
 
-export async function proxy(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
   const isPublic = publicPaths.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`)
@@ -20,7 +20,7 @@ export async function proxy(req: NextRequest) {
 
   const token = await getToken({
     req,
-    secret: process.env.AUTH_SECRET,
+    secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "nextauth_secret_key",
   })
 
   if (!token && !isPublic) {
@@ -36,6 +36,7 @@ export async function proxy(req: NextRequest) {
   if (token && pathname === "/login") {
     const url = req.nextUrl.clone()
     url.pathname = "/"
+    url.search = ""
     return NextResponse.redirect(url)
   }
 

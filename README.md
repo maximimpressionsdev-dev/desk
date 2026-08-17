@@ -51,6 +51,25 @@ curl -X POST -H "Authorization: Bearer $CRON_SECRET" \
 
 - `overdue` — emails assignees/requesters for past-due open tickets
 - `digest` — daily summary of open assigned work
+- `sync` — pull employees and departments from Redis
+
+## Redis directory
+
+Desk reads `employees` and `departments` from Redis DB 3 and upserts them into Postgres.
+
+```bash
+npm run db:sync
+```
+
+Staff sign in with company email or employee number (same password hash as Redis). Employees without an email are stored as `{employeeNumber}@employee.desk.local`.
+
+Set in `.env`:
+
+```
+REDIS_HOST=159.138.98.55
+REDIS_PORT=63790
+REDIS_DB=3
+```
 
 ## Docker (full stack)
 

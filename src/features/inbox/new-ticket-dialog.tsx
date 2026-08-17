@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { api } from "@/lib/api"
@@ -14,13 +14,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { NativeSelect } from "@/components/ui/native-select"
 import { Textarea } from "@/components/ui/textarea"
 
 type Department = { id: number; name: string; active: boolean }
-type TicketType = { id: number; name: string }
+type IssueReason = { id: number; nameEn: string; nameSi: string }
+type IssueCategory = {
+  id: number
+  nameEn: string
+  nameSi: string
+  reasons: IssueReason[]
+}
+
+function bilingual(en: string, si: string) {
+  return en === si ? en : `${en} · ${si}`
+}
 
 export function NewTicketDialog({
   open,
@@ -33,8 +42,8 @@ export function NewTicketDialog({
 }) {
   const qc = useQueryClient()
   const [departmentId, setDepartmentId] = useState("")
-  const [ticketTypeId, setTicketTypeId] = useState("")
-  const [title, setTitle] = useState("")
+  const [categoryId, setCategoryId] = useState("")
+  const [reasonId, setReasonId] = useState("")
   const [description, setDescription] = useState("")
   const [priority, setPriority] = useState("MEDIUM")
   const [loading, setLoading] = useState(false)
@@ -48,27 +57,37 @@ export function NewTicketDialog({
     },
   })
 
-  const typesQuery = useQuery({
-    queryKey: ["ticket-types", departmentId],
+  const issuesQuery = useQuery({
+    queryKey: ["issues", departmentId],
     enabled: open && Boolean(departmentId),
     queryFn: async () => {
-      const res = await api.get(`/api/ticket-types?departmentId=${departmentId}`)
-      return res.ticketTypes as TicketType[]
+      const res = await api.get(`/api/issues?departmentId=${departmentId}`)
+      return res.categories as IssueCategory[]
     },
   })
+
+  const selectedCategory = useMemo(
+    () => (issuesQuery.data || []).find((c) => String(c.id) === categoryId),
+    [issuesQuery.data, categoryId]
+  )
 
   useEffect(() => {
     if (!open) return
     setDepartmentId("")
-    setTicketTypeId("")
-    setTitle("")
+    setCategoryId("")
+    setReasonId("")
     setDescription("")
     setPriority("MEDIUM")
   }, [open])
 
   useEffect(() => {
-    setTicketTypeId("")
+    setCategoryId("")
+    setReasonId("")
   }, [departmentId])
+
+  useEffect(() => {
+    setReasonId("")
+  }, [categoryId])
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -76,8 +95,8 @@ export function NewTicketDialog({
     try {
       const res = await api.post("/api/tickets", {
         departmentId: Number(departmentId),
-        ticketTypeId: ticketTypeId ? Number(ticketTypeId) : null,
-        title,
+        issueCategoryId: categoryId ? Number(categoryId) : null,
+        issueReasonId: reasonId ? Number(reasonId) : null,
         description,
         priority,
       })
@@ -92,12 +111,16 @@ export function NewTicketDialog({
     }
   }
 
+  const canSubmit = Boolean(departmentId && categoryId && reasonId)
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg" showCloseButton>
         <DialogHeader>
           <DialogTitle>New ticket</DialogTitle>
-          <DialogDescription>Pick a department and describe what you need.</DialogDescription>
+          <DialogDescription>
+            Pick department, main issue, and sub issue. Extra notes are optional.
+          </DialogDescription>
         </DialogHeader>
         <form className="space-y-3" onSubmit={onSubmit}>
           <div className="space-y-1.5">
@@ -116,41 +139,46 @@ export function NewTicketDialog({
               ))}
             </NativeSelect>
           </div>
-          {departmentId && (typesQuery.data?.length ?? 0) > 0 ? (
-            <div className="space-y-1.5">
-              <Label>Type (optional)</Label>
-              <NativeSelect
-                value={ticketTypeId}
-                onChange={(e) => setTicketTypeId(e.target.value)}
-                className="h-10"
-              >
-                <option value="">None</option>
-                {(typesQuery.data || []).map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </NativeSelect>
-            </div>
-          ) : null}
           <div className="space-y-1.5">
-            <Label>Title</Label>
-            <Input
-              className="h-10"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
+            <Label>Main issue</Label>
+            <NativeSelect
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
               required
-              minLength={3}
-              placeholder="Short summary"
-              autoFocus
-            />
+              disabled={!departmentId}
+              className="h-10"
+            >
+              <option value="">Select…</option>
+              {(issuesQuery.data || []).map((c) => (
+                <option key={c.id} value={c.id}>
+                  {bilingual(c.nameEn, c.nameSi)}
+                </option>
+              ))}
+            </NativeSelect>
           </div>
           <div className="space-y-1.5">
-            <Label>Details</Label>
+            <Label>Sub issue</Label>
+            <NativeSelect
+              value={reasonId}
+              onChange={(e) => setReasonId(e.target.value)}
+              required
+              disabled={!categoryId}
+              className="h-10"
+            >
+              <option value="">Select…</option>
+              {(selectedCategory?.reasons || []).map((r) => (
+                <option key={r.id} value={r.id}>
+                  {bilingual(r.nameEn, r.nameSi)}
+                </option>
+              ))}
+            </NativeSelect>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Extra notes (optional)</Label>
             <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Anything the team should know"
+              placeholder="Location, machine, or anything else"
             />
           </div>
           <div className="space-y-1.5">
@@ -171,7 +199,7 @@ export function NewTicketDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading || !departmentId || title.trim().length < 3}>
+            <Button type="submit" disabled={loading || !canSubmit}>
               {loading ? "Creating…" : "Create"}
             </Button>
           </DialogFooter>

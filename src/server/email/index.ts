@@ -47,5 +47,5 @@ export async function sendEmail(input: SendEmailInput) {
 }
 
 export function appBaseUrl() {
-  return process.env.AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+  return process.env.AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || ""
 }

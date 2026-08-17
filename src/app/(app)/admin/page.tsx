@@ -42,6 +42,11 @@ export default function AdminPage() {
   const [notifyEmail, setNotifyEmail] = useState("")
   const [cannedTitle, setCannedTitle] = useState("")
   const [cannedBody, setCannedBody] = useState("")
+  const [mainEn, setMainEn] = useState("")
+  const [mainSi, setMainSi] = useState("")
+  const [subEn, setSubEn] = useState("")
+  const [subSi, setSubSi] = useState("")
+  const [issueCategoryId, setIssueCategoryId] = useState("")
 
   const departmentsQuery = useQuery({
     queryKey: ["departments"],
@@ -70,6 +75,19 @@ export default function AdminPage() {
     queryFn: async () =>
       (await api.get(`/api/canned-replies?departmentId=${selectedDept}`))
         .cannedReplies as Array<{ id: number; title: string; body: string }>,
+  })
+
+  const issuesQuery = useQuery({
+    queryKey: ["issues-admin", selectedDept],
+    enabled: Boolean(selectedDept),
+    queryFn: async () =>
+      (await api.get(`/api/issues?departmentId=${selectedDept}&all=1`)).categories as Array<{
+        id: number
+        nameEn: string
+        nameSi: string
+        active: boolean
+        reasons: Array<{ id: number; nameEn: string; nameSi: string; active: boolean }>
+      }>,
   })
 
   const inviteMutation = useMutation({
@@ -151,6 +169,54 @@ export default function AdminPage() {
     onError: (e: Error) => toast.error(e.message),
   })
 
+  const syncMutation = useMutation({
+    mutationFn: () => api.post("/api/admin/sync"),
+    onSuccess: async (data) => {
+      toast.success(
+        `Synced ${data.departmentsUpserted} departments and ${data.usersUpserted} employees`
+      )
+      await qc.invalidateQueries({ queryKey: ["departments"] })
+      await qc.invalidateQueries({ queryKey: ["admin-users"] })
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+
+  const addMainIssueMutation = useMutation({
+    mutationFn: () =>
+      api.post("/api/issues", {
+        kind: "category",
+        departmentId: Number(selectedDept),
+        nameEn: mainEn,
+        nameSi: mainSi,
+      }),
+    onSuccess: async () => {
+      toast.success("Main issue added")
+      setMainEn("")
+      setMainSi("")
+      await qc.invalidateQueries({ queryKey: ["issues-admin", selectedDept] })
+      await qc.invalidateQueries({ queryKey: ["issues"] })
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+
+  const addSubIssueMutation = useMutation({
+    mutationFn: () =>
+      api.post("/api/issues", {
+        kind: "reason",
+        categoryId: Number(issueCategoryId),
+        nameEn: subEn,
+        nameSi: subSi,
+      }),
+    onSuccess: async () => {
+      toast.success("Sub issue added")
+      setSubEn("")
+      setSubSi("")
+      await qc.invalidateQueries({ queryKey: ["issues-admin", selectedDept] })
+      await qc.invalidateQueries({ queryKey: ["issues"] })
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+
   return (
     <SimpleShell title="Admin">
     <div className="flex flex-col gap-6">
@@ -160,6 +226,27 @@ export default function AdminPage() {
           Users, departments, membership, and ticket types.
         </p>
       </div>
+
+      <Card className="border-border/50 bg-card/40">
+        <CardHeader className="border-b">
+          <CardTitle>Company directory</CardTitle>
+          <CardDescription>
+            Pull departments and employees from Redis. Staff can then sign in with company email
+            or employee number.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap items-center gap-3 pt-4">
+          <Button disabled={syncMutation.isPending} onClick={() => syncMutation.mutate()}>
+            {syncMutation.isPending ? "Syncing…" : "Sync from Redis"}
+          </Button>
+          {syncMutation.data ? (
+            <p className="text-muted-foreground text-sm">
+              {syncMutation.data.departmentsUpserted} departments ·{" "}
+              {syncMutation.data.usersUpserted} people · {syncMutation.data.skipped} skipped
+            </p>
+          ) : null}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="border-border/50 bg-card/40">
@@ -295,6 +382,84 @@ export default function AdminPage() {
                 <p className="text-muted-foreground text-xs">
                   New tickets to this department are emailed here (optional).
                 </p>
+              </div>
+              <div className="space-y-3 md:col-span-2">
+                <Label>Issue catalog (Sinhala + English)</Label>
+                <p className="text-muted-foreground text-xs">
+                  Users pick a main issue then a sub issue instead of typing a title.
+                </p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <Input
+                    placeholder="Main issue (English)"
+                    value={mainEn}
+                    onChange={(e) => setMainEn(e.target.value)}
+                  />
+                  <Input
+                    placeholder="ප්‍රධාන ගැටලුව (සිංහල)"
+                    value={mainSi}
+                    onChange={(e) => setMainSi(e.target.value)}
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  disabled={!mainEn.trim() || !mainSi.trim() || addMainIssueMutation.isPending}
+                  onClick={() => addMainIssueMutation.mutate()}
+                >
+                  Add main issue
+                </Button>
+                <div className="space-y-2">
+                  <NativeSelect
+                    value={issueCategoryId}
+                    onChange={(e) => setIssueCategoryId(e.target.value)}
+                  >
+                    <option value="">Select main issue for sub issue</option>
+                    {(issuesQuery.data || []).map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nameEn} · {c.nameSi}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <Input
+                      placeholder="Sub issue (English)"
+                      value={subEn}
+                      onChange={(e) => setSubEn(e.target.value)}
+                    />
+                    <Input
+                      placeholder="උප ගැටලුව (සිංහල)"
+                      value={subSi}
+                      onChange={(e) => setSubSi(e.target.value)}
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    disabled={
+                      !issueCategoryId ||
+                      !subEn.trim() ||
+                      !subSi.trim() ||
+                      addSubIssueMutation.isPending
+                    }
+                    onClick={() => addSubIssueMutation.mutate()}
+                  >
+                    Add sub issue
+                  </Button>
+                </div>
+                <ul className="space-y-2 text-sm">
+                  {(issuesQuery.data || []).map((c) => (
+                    <li key={c.id} className="rounded-md border px-3 py-2">
+                      <p className="font-medium">
+                        {c.nameEn} · {c.nameSi}
+                      </p>
+                      <ul className="text-muted-foreground mt-1 space-y-0.5 text-xs">
+                        {c.reasons.map((r) => (
+                          <li key={r.id}>
+                            {r.nameEn} · {r.nameSi}
+                          </li>
+                        ))}
+                      </ul>
+                    </li>
+                  ))}
+                </ul>
               </div>
               <div className="space-y-2 md:col-span-2">
                 <Label>Canned replies</Label>
