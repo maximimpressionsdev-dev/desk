@@ -26,9 +26,6 @@ services:
       AUTH_SECRET: ${AUTH_SECRET:-nextauth_secret_key}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-nextauth_secret_key}
       AUTH_TRUST_HOST: "true"
-      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@company.local}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin12345}
-      ADMIN_NAME: ${ADMIN_NAME:-System Admin}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER:-}

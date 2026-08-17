@@ -5,6 +5,7 @@ import { redisConfigured } from "@/server/redis/client"
 import {
   employeeDisplayName,
   employeeEmail,
+  employeePhone,
   findRedisEmployee,
   loadDirectory,
   type RedisEmployee,
@@ -37,7 +38,6 @@ async function upsertDepartment(input: {
       .set({
         code: input.code,
         name: input.name,
-        active: true,
         updatedAt: new Date(),
       })
       .where(eq(departments.id, byExternal[0].id))
@@ -56,7 +56,6 @@ async function upsertDepartment(input: {
       .set({
         name: input.name,
         externalId: input.externalId,
-        active: true,
         updatedAt: new Date(),
       })
       .where(eq(departments.id, byCode[0].id))
@@ -89,6 +88,7 @@ async function upsertEmployee(
   const employeeNumber = emp.employeeNumber?.trim() || null
   const username = emp.userName?.trim() || null
   const nic = emp.nic?.trim() || null
+  const phone = employeePhone(emp)
   const name = employeeDisplayName(emp)
   const active = isActive(emp.status)
 
@@ -117,6 +117,7 @@ async function upsertEmployee(
     employeeNumber,
     username,
     nic,
+    phone,
     ...(emp.passwordHash && !keepAdmin ? { passwordHash: emp.passwordHash } : {}),
     updatedAt: new Date(),
   }

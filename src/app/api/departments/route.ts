@@ -1,14 +1,22 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { eq } from "drizzle-orm"
+import { asc, eq } from "drizzle-orm"
 import { db } from "@/server/db"
 import { departments } from "@/server/db/schema"
 import { jsonError, requireAdmin, requireSession } from "@/server/auth/guards"
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    await requireSession()
-    const rows = await db.select().from(departments).orderBy(departments.name)
+    const { isAdmin } = await requireSession()
+    const all = new URL(req.url).searchParams.get("all") === "1"
+    const showAll = isAdmin && all
+    const rows = showAll
+      ? await db.select().from(departments).orderBy(asc(departments.name))
+      : await db
+          .select()
+          .from(departments)
+          .where(eq(departments.active, true))
+          .orderBy(asc(departments.name))
     return NextResponse.json({ departments: rows })
   } catch (error) {
     return jsonError(error)

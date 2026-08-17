@@ -1,0 +1,30 @@
+# Vercel production env for desk (maxim-683b team)
+# Dashboard: https://vercel.com/maxim-683b/desk/settings/environment-variables
+#
+# REMOVE these (no longer used):
+#   ADMIN_EMAIL
+#   ADMIN_PASSWORD
+#   ADMIN_NAME
+#
+# SET / UPDATE for production:
+
+DATABASE_URL=postgresql://postgres.cemtuicerubrmixxziin:[PASSWORD]@aws-0-ap-south-1.pooler.supabase.com:6543/postgres
+
+AUTH_SECRET=nextauth_secret_key
+NEXTAUTH_SECRET=nextauth_secret_key
+AUTH_TRUST_HOST=true
+
+NEXT_PUBLIC_SUPABASE_URL=https://cemtuicerubrmixxziin.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_E0DMXokgq-BzxbeI2T-u1Q_0vSQFnNL
+
+REDIS_HOST=159.138.98.55
+REDIS_PORT=63790
+REDIS_DB=3
+
+CRON_SECRET=dev-cron-secret
+NEXT_PUBLIC_APP_NAME=Company Tickets
+
+NOTIFICATION_API_URL=https://api.dev.notification.maximimpressions.com
+NOTIFICATION_API_KEY=
+NOTIFICATION_SMS_ALIAS=MAXIM
+SMTP_FROM=tickets@company.local

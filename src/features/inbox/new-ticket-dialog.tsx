@@ -53,7 +53,7 @@ export function NewTicketDialog({
     enabled: open,
     queryFn: async () => {
       const res = await api.get("/api/departments")
-      return (res.departments as Department[]).filter((d) => d.active)
+      return res.departments as Department[]
     },
   })
 

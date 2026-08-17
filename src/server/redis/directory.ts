@@ -1,4 +1,5 @@
 import { getRedis } from "@/server/redis/client"
+import { normalizePhone } from "@/server/notifications/phone"
 
 export type RedisDepartment = {
   id: number
@@ -21,6 +22,11 @@ export type RedisEmployee = {
   designationName?: string | null
   passwordHash?: string | null
   status?: string | null
+  mobilePhone?: string | null
+  mobile?: string | null
+  phone?: string | null
+  phoneNumber?: string | null
+  contactNumber?: string | null
 }
 
 type Cache = {
@@ -67,6 +73,17 @@ export function employeeEmail(emp: RedisEmployee) {
   const number = emp.employeeNumber?.trim()
   if (number) return placeholderEmail(number)
   return null
+}
+
+export function employeePhone(emp: RedisEmployee) {
+  const raw =
+    emp.mobilePhone ||
+    emp.mobile ||
+    emp.phone ||
+    emp.phoneNumber ||
+    emp.contactNumber ||
+    null
+  return normalizePhone(raw)
 }
 
 export function normalizeIdNumber(value: string) {

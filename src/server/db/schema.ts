@@ -43,6 +43,7 @@ export const users = pgTable(
     employeeNumber: varchar("employee_number", { length: 32 }),
     username: varchar("username", { length: 80 }),
     nic: varchar("nic", { length: 32 }),
+    phone: varchar("phone", { length: 20 }),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

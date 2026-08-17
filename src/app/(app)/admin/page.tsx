@@ -49,8 +49,20 @@ export default function AdminPage() {
   const [issueCategoryId, setIssueCategoryId] = useState("")
 
   const departmentsQuery = useQuery({
-    queryKey: ["departments"],
-    queryFn: async () => (await api.get("/api/departments")).departments as Department[],
+    queryKey: ["departments", "admin"],
+    queryFn: async () =>
+      (await api.get("/api/departments?all=1")).departments as Department[],
+  })
+
+  const toggleDeptMutation = useMutation({
+    mutationFn: (dept: Department) =>
+      api.patch("/api/departments", { id: dept.id, active: !dept.active }),
+    onSuccess: async (_data, dept) => {
+      toast.success(dept.active ? "Department deactivated" : "Department activated")
+      await qc.invalidateQueries({ queryKey: ["departments"] })
+      await qc.invalidateQueries({ queryKey: ["departments", "admin"] })
+    },
+    onError: (e: Error) => toast.error(e.message),
   })
 
   const usersQuery = useQuery({
@@ -108,6 +120,7 @@ export default function AdminPage() {
       setDeptCode("")
       setDeptName("")
       await qc.invalidateQueries({ queryKey: ["departments"] })
+      await qc.invalidateQueries({ queryKey: ["departments", "admin"] })
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -149,6 +162,7 @@ export default function AdminPage() {
     onSuccess: async () => {
       toast.success("Notify email saved")
       await qc.invalidateQueries({ queryKey: ["departments"] })
+      await qc.invalidateQueries({ queryKey: ["departments", "admin"] })
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -176,6 +190,7 @@ export default function AdminPage() {
         `Synced ${data.departmentsUpserted} departments and ${data.usersUpserted} employees`
       )
       await qc.invalidateQueries({ queryKey: ["departments"] })
+      await qc.invalidateQueries({ queryKey: ["departments", "admin"] })
       await qc.invalidateQueries({ queryKey: ["admin-users"] })
     },
     onError: (e: Error) => toast.error(e.message),
@@ -298,6 +313,56 @@ export default function AdminPage() {
 
       <Card className="border-border/50 bg-card/40">
         <CardHeader className="border-b">
+          <CardTitle>Departments</CardTitle>
+          <CardDescription>
+            Deactivate departments you do not use for tickets. Inactive departments stay in the
+            database but are hidden from new ticket forms. Redis sync will not reactivate them.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-4">
+          {departmentsQuery.isLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead className="text-muted-foreground text-[11px] tracking-wider uppercase">
+                  <tr>
+                    <th className="py-2 pr-4 font-medium">Code</th>
+                    <th className="py-2 pr-4 font-medium">Name</th>
+                    <th className="py-2 pr-4 font-medium">Active</th>
+                    <th className="py-2 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(departmentsQuery.data || []).map((d) => (
+                    <tr key={d.id} className="border-border/40 border-t">
+                      <td className="py-3 pr-4 font-mono text-xs">{d.code}</td>
+                      <td className="py-3 pr-4 font-medium">{d.name}</td>
+                      <td className="py-3 pr-4">{d.active ? "Yes" : "No"}</td>
+                      <td className="py-3">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={toggleDeptMutation.isPending}
+                          onClick={() => toggleDeptMutation.mutate(d)}
+                        >
+                          {d.active ? "Deactivate" : "Activate"}
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/50 bg-card/40">
+        <CardHeader className="border-b">
           <CardTitle>Department membership & types</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 pt-4">
@@ -317,7 +382,7 @@ export default function AdminPage() {
               <option value="">Select</option>
               {(departmentsQuery.data || []).map((d) => (
                 <option key={d.id} value={d.id}>
-                  {d.name} ({d.code})
+                  {d.name} ({d.code}){d.active ? "" : " — inactive"}
                 </option>
               ))}
             </NativeSelect>

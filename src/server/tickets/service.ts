@@ -17,7 +17,8 @@ import {
 import { ApiError, isDepartmentAgent } from "@/server/auth/guards"
 import { allowedNextStatuses, type TicketPriority } from "@/lib/ticket-constants"
 import { issueLabel } from "@/server/issues/catalog"
-import { sendEmail } from "@/server/email"
+import { sendEmail, appBaseUrl } from "@/server/email"
+import { sendSms } from "@/server/notifications/sms"
 import {
   ticketAssignedEmailHtml,
   ticketCreatedEmailHtml,
@@ -409,6 +410,11 @@ export async function assignTicket(input: {
       text: `Ticket ${ticket.code} assigned to you`,
     })
 
+    void sendSms({
+      to: assignee.phone || "",
+      text: `Desk: Ticket ${ticket.code} assigned to you — ${ticket.title}`,
+    })
+
     return updated
   }
 
@@ -505,6 +511,14 @@ export async function updateTicketStatus(input: {
       }),
       text: `Ticket ${ticket.code} status: ${input.status}`,
     })
+
+    if (input.status === "RESOLVED") {
+      const url = `${appBaseUrl()}/tickets/${ticket.code}`.trim()
+      void sendSms({
+        to: requester.phone || "",
+        text: `Desk: Ticket ${ticket.code} resolved — ${ticket.title}${url ? ` ${url}` : ""}`,
+      })
+    }
   }
 
   return updated

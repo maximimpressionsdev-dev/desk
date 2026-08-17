@@ -17,6 +17,7 @@
     "db:bootstrap": "tsx scripts/bootstrap-db.ts",
     "db:bootstrap-supabase": "tsx scripts/mirror-to-supabase.ts",
     "db:verify": "tsx scripts/verify-db.ts",
+    "vercel:sync-env": "bash scripts/sync-vercel-env.sh",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {

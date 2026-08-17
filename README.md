@@ -16,18 +16,16 @@ Standalone internal ticketing / work-request system for any department.
 # Start Postgres
 docker compose up -d db
 
-# Install & setup schema + admin seed
+# Install & setup schema + seed
 npm install
 npm run db:setup
+npm run db:sync
 
 # Dev server
 npm run dev
 ```
 
-Default admin (from `.env`):
-
-- Email: `admin@company.local`
-- Password: `admin12345`
+Staff sign in with **username/employee number + password/NIC** (synced from Redis). Run `npm run db:sync` to refresh the directory.
 
 ## App surfaces
 
