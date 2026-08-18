@@ -1,49 +1,24 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { and, asc, eq, isNull, or } from "drizzle-orm"
+import { eq } from "drizzle-orm"
 import { db } from "@/server/db"
 import { issueCategories, issueReasons } from "@/server/db/schema"
 import { ApiError, jsonError, requireAdmin, requireSession } from "@/server/auth/guards"
+import { listMergedIssues } from "@/server/issues/catalog"
 
 export async function GET(req: Request) {
   try {
     await requireSession()
-    const departmentId = Number(new URL(req.url).searchParams.get("departmentId") || 0)
-    const includeInactive = new URL(req.url).searchParams.get("all") === "1"
+    const url = new URL(req.url)
+    const departmentId = Number(url.searchParams.get("departmentId") || 0)
+    const includeInactive = url.searchParams.get("all") === "1"
 
-    const categoryFilters = []
-    if (departmentId) {
-      categoryFilters.push(
-        or(eq(issueCategories.departmentId, departmentId), isNull(issueCategories.departmentId))
-      )
-    }
-    if (!includeInactive) categoryFilters.push(eq(issueCategories.active, true))
-
-    const categories = await db
-      .select()
-      .from(issueCategories)
-      .where(categoryFilters.length ? and(...categoryFilters) : undefined)
-      .orderBy(asc(issueCategories.sortOrder), asc(issueCategories.nameEn))
-
-    const reasons = await db
-      .select()
-      .from(issueReasons)
-      .where(includeInactive ? undefined : eq(issueReasons.active, true))
-      .orderBy(asc(issueReasons.sortOrder), asc(issueReasons.nameEn))
-
-    const byCategory = new Map<number, typeof reasons>()
-    for (const reason of reasons) {
-      const list = byCategory.get(reason.categoryId) ?? []
-      list.push(reason)
-      byCategory.set(reason.categoryId, list)
-    }
-
-    return NextResponse.json({
-      categories: categories.map((c) => ({
-        ...c,
-        reasons: byCategory.get(c.id) ?? [],
-      })),
+    const categories = await listMergedIssues({
+      departmentId: departmentId || undefined,
+      includeInactive,
     })
+
+    return NextResponse.json({ categories })
   } catch (error) {
     return jsonError(error)
   }

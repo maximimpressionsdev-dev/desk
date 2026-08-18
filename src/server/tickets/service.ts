@@ -16,7 +16,7 @@ import {
 } from "@/server/db/schema"
 import { ApiError, isDepartmentAgent } from "@/server/auth/guards"
 import { allowedNextStatuses, type TicketPriority } from "@/lib/ticket-constants"
-import { issueLabel } from "@/server/issues/catalog"
+import { issueLabel, persistSelectedIssue } from "@/server/issues/catalog"
 import { sendEmail, appBaseUrl } from "@/server/email"
 import { sendSms } from "@/server/notifications/sms"
 import {
@@ -238,44 +238,11 @@ export async function createTicket(input: {
     if (!tt) throw new ApiError(400, "Invalid ticket type")
   }
 
-  let issueCategory: typeof issueCategories.$inferSelect | null = null
-  let issueReason: typeof issueReasons.$inferSelect | null = null
-  if (input.issueReasonId) {
-    const [reason] = await db
-      .select()
-      .from(issueReasons)
-      .where(and(eq(issueReasons.id, input.issueReasonId), eq(issueReasons.active, true)))
-      .limit(1)
-    if (!reason) throw new ApiError(400, "Invalid sub issue")
-    const [category] = await db
-      .select()
-      .from(issueCategories)
-      .where(and(eq(issueCategories.id, reason.categoryId), eq(issueCategories.active, true)))
-      .limit(1)
-    if (!category) throw new ApiError(400, "Invalid main issue")
-    if (
-      category.departmentId != null &&
-      category.departmentId !== input.departmentId
-    ) {
-      throw new ApiError(400, "Issue does not belong to this department")
-    }
-    issueReason = reason
-    issueCategory = category
-  } else if (input.issueCategoryId) {
-    const [category] = await db
-      .select()
-      .from(issueCategories)
-      .where(and(eq(issueCategories.id, input.issueCategoryId), eq(issueCategories.active, true)))
-      .limit(1)
-    if (!category) throw new ApiError(400, "Invalid main issue")
-    if (
-      category.departmentId != null &&
-      category.departmentId !== input.departmentId
-    ) {
-      throw new ApiError(400, "Issue does not belong to this department")
-    }
-    issueCategory = category
-  }
+  const { category: issueCategory, reason: issueReason } = await persistSelectedIssue({
+    departmentId: input.departmentId,
+    issueCategoryId: input.issueCategoryId,
+    issueReasonId: input.issueReasonId,
+  })
 
   const title =
     input.title?.trim() ||
