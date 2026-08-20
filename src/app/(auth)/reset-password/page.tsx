@@ -35,15 +35,19 @@ export default function ResetRequestPage() {
       <Card className="border-border/50 bg-card/40 w-full max-w-md ring-1 ring-foreground/10">
         <CardHeader>
           <CardTitle className="text-xl">Reset password</CardTitle>
-          <CardDescription>We&apos;ll email a one-time link if the account exists.</CardDescription>
+          <CardDescription>
+            Enter your company email, username, or employee number. We&apos;ll send a reset link if
+            we have a deliverable address on file.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={onSubmit}>
             <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Email, username, or employee number</Label>
               <Input
                 id="email"
-                type="email"
+                type="text"
+                autoComplete="username"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required

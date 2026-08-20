@@ -1,21 +1,76 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { and, eq, gt, isNull } from "drizzle-orm"
+import { and, eq, gt, isNull, or, sql } from "drizzle-orm"
 import { db } from "@/server/db"
 import { passwordResets, users } from "@/server/db/schema"
 import { createToken, hashPassword, hashToken } from "@/server/auth/password"
-import { appBaseUrl, sendEmail } from "@/server/email"
+import {
+  appBaseUrlFromRequest,
+  isDeliverableEmail,
+  sendEmail,
+} from "@/server/email"
 import { passwordResetEmailHtml } from "@/server/email/templates"
 import { ApiError, jsonError } from "@/server/auth/guards"
+import { redisConfigured } from "@/server/redis/client"
+import { employeeEmail, loadDirectory } from "@/server/redis/directory"
 
 const requestSchema = z.object({
-  email: z.string().email(),
+  email: z.string().min(1),
 })
 
 const resetSchema = z.object({
   token: z.string().min(10),
   password: z.string().min(8).max(200),
 })
+
+async function findUserForReset(identifier: string) {
+  const raw = identifier.trim()
+  const needle = raw.toLowerCase()
+  if (!needle) return null
+
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(
+      or(
+        eq(users.employeeNumber, raw),
+        sql`lower(${users.employeeNumber}) = ${needle}`,
+        sql`lower(${users.username}) = ${needle}`,
+        eq(users.email, needle)
+      )
+    )
+    .limit(1)
+
+  return user || null
+}
+
+async function deliverableEmailForUser(user: typeof users.$inferSelect) {
+  if (isDeliverableEmail(user.email)) return user.email.toLowerCase()
+
+  if (!redisConfigured()) return null
+
+  try {
+    const { employees } = await loadDirectory()
+    const emp =
+      employees.find((e) => e.id === user.externalId) ||
+      employees.find(
+        (e) =>
+          (e.userName || "").trim().toLowerCase() === (user.username || "").trim().toLowerCase()
+      ) ||
+      employees.find(
+        (e) =>
+          (e.employeeNumber || "").trim().toLowerCase() ===
+          (user.employeeNumber || "").trim().toLowerCase()
+      )
+
+    if (!emp) return null
+    const email = employeeEmail(emp)
+    return email && isDeliverableEmail(email) ? email : null
+  } catch (error) {
+    console.error("[password-reset] redis lookup failed", error)
+    return null
+  }
+}
 
 export async function POST(req: Request) {
   try {
@@ -24,23 +79,28 @@ export async function POST(req: Request) {
 
     if (action === "request") {
       const body = requestSchema.parse(await req.json())
-      const email = body.email.toLowerCase().trim()
-      const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1)
+      const user = await findUserForReset(body.email)
       // Always return ok to avoid account enumeration
       if (user?.active) {
-        const token = createToken()
-        await db.insert(passwordResets).values({
-          userId: user.id,
-          tokenHash: hashToken(token),
-          expiresAt: new Date(Date.now() + 60 * 60 * 1000),
-        })
-        const resetUrl = `${appBaseUrl()}/reset-password/${token}`
-        await sendEmail({
-          to: user.email,
-          subject: "Reset your password",
-          html: passwordResetEmailHtml({ resetUrl }),
-          text: `Reset password: ${resetUrl}`,
-        })
+        const to = await deliverableEmailForUser(user)
+        if (to) {
+          const token = createToken()
+          await db.insert(passwordResets).values({
+            userId: user.id,
+            tokenHash: hashToken(token),
+            expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+          })
+          const baseUrl = appBaseUrlFromRequest(req)
+          const resetUrl = `${baseUrl}/reset-password/${token}`
+          await sendEmail({
+            to,
+            subject: "Reset your password",
+            html: passwordResetEmailHtml({ resetUrl }),
+            text: `Reset password: ${resetUrl}`,
+          })
+        } else {
+          console.warn("[password-reset] no deliverable email for user", user.id)
+        }
       }
       return NextResponse.json({ ok: true })
     }

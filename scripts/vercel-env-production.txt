@@ -23,6 +23,7 @@ REDIS_DB=3
 
 CRON_SECRET=dev-cron-secret
 NEXT_PUBLIC_APP_NAME=Company Tickets
+NEXT_PUBLIC_APP_URL=https://support-desk.maximimpressions.com
 
 NOTIFICATION_API_URL=https://api.dev.notification.maximimpressions.com
 NOTIFICATION_API_KEY=

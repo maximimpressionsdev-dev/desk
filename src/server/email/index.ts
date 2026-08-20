@@ -5,6 +5,8 @@ import {
   notificationsConfigured,
 } from "@/server/notifications/client"
 
+export { appBaseUrl, appBaseUrlFromRequest, isDeliverableEmail } from "@/server/email/base-url"
+
 type SendEmailInput = {
   to: string | string[]
   subject: string
@@ -59,8 +61,4 @@ export async function sendEmail(input: SendEmailInput) {
   }
 
   return { queued: true, logged: false }
-}
-
-export function appBaseUrl() {
-  return process.env.AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || ""
 }
