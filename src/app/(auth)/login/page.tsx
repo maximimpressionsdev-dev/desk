@@ -58,8 +58,9 @@ function LoginForm() {
         </div>
         <CardTitle className="text-xl">Sign in</CardTitle>
         <CardDescription>
-          Use your company username or employee number. Password can be your account password or
-          NIC / ID number.
+          Staff sign in with company credentials from ERP (username or employee number + ERP
+          password or NIC). Password reset here is only for invited Desk accounts, not synced
+          employees.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -90,11 +91,17 @@ function LoginForm() {
             {loading ? "Signing in…" : "Sign in"}
           </Button>
         </form>
-        <p className="text-muted-foreground mt-4 text-center text-sm">
-          <Link href="/reset-password" className="hover:text-foreground underline-offset-4 hover:underline">
-            Forgot password?
-          </Link>
-        </p>
+        <div className="text-muted-foreground mt-4 space-y-2 text-center text-xs leading-relaxed">
+          <p>
+            Locked out? Use your company ERP password or your NIC. If access still fails, send a
+            reset help request to IT.
+          </p>
+          <p>
+            <Link href="/reset-password" className="hover:text-foreground underline-offset-4 hover:underline">
+              Request password reset help
+            </Link>
+          </p>
+        </div>
       </CardContent>
     </Card>
   )
