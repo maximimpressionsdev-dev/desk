@@ -1,8 +1,10 @@
 export function notificationBaseUrl() {
-  return (
-    process.env.NOTIFICATION_API_URL?.replace(/\/+$/, "") ||
-    "https://api.dev.notification.maximimpressions.com"
-  )
+  // API expects a trailing slash before the path segment
+  // e.g. https://api.dev.notification.maximimpressions.com//mail/emit
+  const raw =
+    process.env.NOTIFICATION_API_URL?.trim() ||
+    "https://api.dev.notification.maximimpressions.com/"
+  return raw.endsWith("/") ? raw : `${raw}/`
 }
 
 export function notificationApiKey() {

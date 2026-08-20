@@ -46,7 +46,11 @@ export async function sendEmail(input: SendEmailInput) {
   const bcc = input.bcc ? joinRecipients(input.bcc) : ""
   if (bcc) form.append("bcc", bcc)
 
-  const res = await fetch(`${notificationBaseUrl()}/mail/emit`, {
+  // Matches Maxim API: https://host//mail/emit
+  const url = `${notificationBaseUrl()}/mail/emit`
+  console.info("[email] sending", { url, to, subject: input.subject })
+
+  const res = await fetch(url, {
     method: "POST",
     headers: {
       "x-key": notificationApiKey(),
@@ -54,11 +58,12 @@ export async function sendEmail(input: SendEmailInput) {
     body: form,
   })
 
+  const body = await res.text().catch(() => "")
   if (!res.ok) {
-    const body = await res.text().catch(() => "")
     console.error("[email] failed", res.status, body)
-    throw new Error(`Email send failed (${res.status})`)
+    throw new Error(`Email send failed (${res.status}): ${body.slice(0, 300)}`)
   }
 
-  return { queued: true, logged: false }
+  console.info("[email] sent", { status: res.status, body: body.slice(0, 300) })
+  return { queued: true, logged: false, status: res.status }
 }
