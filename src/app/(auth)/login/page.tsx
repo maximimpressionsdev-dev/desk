@@ -96,9 +96,15 @@ function LoginForm() {
             Locked out? Use your company ERP password or your NIC. If access still fails, send a
             reset help request to IT.
           </p>
-          <p>
+          <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
             <Link href="/reset-password" className="hover:text-foreground underline-offset-4 hover:underline">
               Request password reset help
+            </Link>
+            <span className="text-border" aria-hidden>
+              ·
+            </span>
+            <Link href="/manual" className="hover:text-foreground underline-offset-4 hover:underline">
+              User manual
             </Link>
           </p>
         </div>
