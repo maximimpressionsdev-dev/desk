@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from "react"
 import { signIn } from "next-auth/react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
 import { Ticket } from "lucide-react"
@@ -28,7 +28,6 @@ function safeNextPath(raw: string | null) {
 }
 
 function LoginForm() {
-  const router = useRouter()
   const search = useSearchParams()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -47,8 +46,8 @@ function LoginForm() {
       toast.error("Invalid username, employee number, or password")
       return
     }
-    router.push(safeNextPath(search.get("callbackUrl")))
-    router.refresh()
+    // Full navigation so middleware/session cookie are re-read reliably.
+    window.location.assign(safeNextPath(search.get("callbackUrl")))
   }
 
   return (

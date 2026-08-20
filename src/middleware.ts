@@ -18,9 +18,17 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
+  // Auth.js sets `__Secure-authjs.session-token` on HTTPS. getToken defaults
+  // secureCookie=false and looks for the wrong cookie name/salt, which makes
+  // post-login redirects bounce straight back to /login in production.
+  const isHttps =
+    req.nextUrl.protocol === "https:" ||
+    req.headers.get("x-forwarded-proto") === "https"
+
   const token = await getToken({
     req,
     secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "nextauth_secret_key",
+    secureCookie: isHttps,
   })
 
   if (!token && !isPublic) {
