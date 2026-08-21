@@ -86,6 +86,10 @@ export async function notifyWatchers(input: {
   code: string
   title: string
   summary: string
+  status?: string | null
+  priority?: string | null
+  departmentName?: string | null
+  updateLabel?: string | null
   excludeUserIds?: number[]
 }) {
   const watchers = await listWatchers(input.ticketId)
@@ -96,11 +100,15 @@ export async function notifyWatchers(input: {
   if (!emails.length) return
   void sendEmail({
     to: emails,
-    subject: `[${input.code}] ${input.summary.slice(0, 60)}`,
+    subject: `[${input.code}] ${input.updateLabel || "Update"} · ${input.title}`.slice(0, 120),
     html: ticketUpdatedEmailHtml({
       code: input.code,
       title: input.title,
       summary: input.summary,
+      status: input.status,
+      priority: input.priority,
+      departmentName: input.departmentName,
+      updateLabel: input.updateLabel,
     }),
     text: input.summary,
   })

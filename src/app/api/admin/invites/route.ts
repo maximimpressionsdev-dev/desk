@@ -64,7 +64,7 @@ export async function POST(req: Request) {
     const inviteUrl = `${appBaseUrl()}/invite/${token}`
     await sendEmail({
       to: email,
-      subject: "You're invited to Company Tickets",
+      subject: "You're invited to support-desk",
       html: inviteEmailHtml({ name: body.name, inviteUrl }),
       text: `Accept invite: ${inviteUrl}`,
     })

@@ -2,8 +2,8 @@ import { NextResponse } from "next/server"
 import { and, eq, isNotNull, lt, sql } from "drizzle-orm"
 import { db } from "@/server/db"
 import { tickets, users } from "@/server/db/schema"
-import { sendEmail, appBaseUrl } from "@/server/email"
-import { ticketUpdatedEmailHtml } from "@/server/email/templates"
+import { sendEmail } from "@/server/email"
+import { digestEmailHtml, ticketUpdatedEmailHtml } from "@/server/email/templates"
 
 function authorized(req: Request) {
   const secret = process.env.CRON_SECRET
@@ -51,11 +51,12 @@ export async function POST(req: Request) {
       if (!unique.length) continue
       await sendEmail({
         to: unique,
-        subject: `[${t.code}] Overdue`,
+        subject: `[${t.code}] Overdue · ${t.title}`,
         html: ticketUpdatedEmailHtml({
           code: t.code,
           title: t.title,
-          summary: `This ticket is overdue (due ${t.dueAt?.toISOString() || "n/a"}).`,
+          summary: `This ticket is overdue (due ${t.dueAt?.toISOString() || "n/a"}). Please take action or update the due date.`,
+          updateLabel: "Overdue",
         }),
         text: `Overdue: ${t.code} ${t.title}`,
       })
@@ -94,20 +95,19 @@ export async function POST(req: Request) {
     for (const [assigneeId, list] of byAssignee) {
       const [user] = await db.select().from(users).where(eq(users.id, assigneeId)).limit(1)
       if (!user?.active) continue
-      const lines = list
-        .slice(0, 20)
-        .map((t) => `• ${t.code} [${t.priority}] ${t.title} (${t.status})`)
-        .join("<br/>")
       await sendEmail({
         to: user.email,
-        subject: `Your open tickets (${list.length})`,
-        html: `<div style="font-family:Segoe UI,Arial,sans-serif">
-          <p>Hi ${user.name},</p>
-          <p>You have <strong>${list.length}</strong> open ticket(s):</p>
-          <p>${lines}</p>
-          <p><a href="${appBaseUrl()}/?tab=for-me">Open inbox</a></p>
-        </div>`,
-        text: list.map((t) => `${t.code} ${t.title}`).join("\n"),
+        subject: `Your open tickets (${list.length}) · support-desk`,
+        html: digestEmailHtml({
+          name: user.name,
+          tickets: list.map((t) => ({
+            code: t.code,
+            title: t.title,
+            priority: t.priority,
+            status: t.status,
+          })),
+        }),
+        text: list.map((t) => `${t.code} [${t.priority}] ${t.title} (${t.status})`).join("\n"),
       })
       sent++
     }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { ApiError, jsonError } from "@/server/auth/guards"
 import { sendEmail } from "@/server/email"
+import { passwordResetSupportEmailHtml } from "@/server/email/templates"
 
 const requestSchema = z.object({
   employeeNumber: z.string().min(1).max(64),
@@ -15,26 +16,24 @@ export async function POST(req: Request) {
     const employeeNumber = body.employeeNumber.trim()
     const email = body.email?.trim() || null
     const phone = body.phone?.trim() || null
+    const requestedAt = new Date().toISOString()
 
     await sendEmail({
       to: "tharuka@maximimpressions.com",
       cc: ["thimira@maximimpressions.com", "oattanayake@maximimpressions.com"],
-      subject: `[Desk] Password reset support request - ${employeeNumber}`,
-      html: `
-        <div style="font-family:Segoe UI,Arial,sans-serif;line-height:1.5;color:#111">
-          <p><strong>Password reset support request</strong></p>
-          <p>Employee Number: <strong>${employeeNumber}</strong></p>
-          <p>Email: ${email ?? "Not provided"}</p>
-          <p>Phone: ${phone ?? "Not provided"}</p>
-          <p>Requested at: ${new Date().toISOString()}</p>
-        </div>
-      `,
+      subject: `[Desk] Password reset support · ${employeeNumber}`,
+      html: passwordResetSupportEmailHtml({
+        employeeNumber,
+        email,
+        phone,
+        requestedAt,
+      }),
       text: [
         "Password reset support request",
         `Employee Number: ${employeeNumber}`,
         `Email: ${email ?? "Not provided"}`,
         `Phone: ${phone ?? "Not provided"}`,
-        `Requested at: ${new Date().toISOString()}`,
+        `Requested at: ${requestedAt}`,
       ].join("\n"),
     })
 

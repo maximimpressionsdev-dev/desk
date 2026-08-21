@@ -15,8 +15,8 @@ import {
   type TicketStatus,
 } from "@/server/db/schema"
 import { ApiError, isDepartmentAgent } from "@/server/auth/guards"
-import { allowedNextStatuses, type TicketPriority } from "@/lib/ticket-constants"
-import { issueLabel, persistSelectedIssue } from "@/server/issues/catalog"
+import { allowedNextStatuses, STATUS_LABELS, type TicketPriority } from "@/lib/ticket-constants"
+import { persistSelectedIssue } from "@/server/issues/catalog"
 import { sendEmail, appBaseUrl } from "@/server/email"
 import { sendSms } from "@/server/notifications/sms"
 import {
@@ -223,6 +223,7 @@ export async function createTicket(input: {
     .limit(1)
   if (!department) throw new ApiError(400, "Department not found")
 
+  let ticketTypeName: string | null = null
   if (input.ticketTypeId) {
     const [tt] = await db
       .select()
@@ -236,6 +237,7 @@ export async function createTicket(input: {
       )
       .limit(1)
     if (!tt) throw new ApiError(400, "Invalid ticket type")
+    ticketTypeName = tt.name
   }
 
   const { category: issueCategory, reason: issueReason } = await persistSelectedIssue({
@@ -247,9 +249,9 @@ export async function createTicket(input: {
   const title =
     input.title?.trim() ||
     (issueCategory && issueReason
-      ? `${issueLabel(issueCategory.nameEn, issueCategory.nameSi)} — ${issueLabel(issueReason.nameEn, issueReason.nameSi)}`
+      ? `${issueCategory.nameEn} — ${issueReason.nameEn}`
       : issueCategory
-        ? issueLabel(issueCategory.nameEn, issueCategory.nameSi)
+        ? issueCategory.nameEn
         : "")
   if (title.length < 3) throw new ApiError(400, "Select an issue or enter a title")
 
@@ -304,14 +306,28 @@ export async function createTicket(input: {
   if (recipients.length) {
     void sendEmail({
       to: recipients,
-      subject: `[${code}] New ticket: ${created.title}`,
+      subject: `[${code}] New ticket · ${created.title}`,
       html: ticketCreatedEmailHtml({
         code,
         title: created.title,
         departmentName: department.name,
         requesterName: requester.name,
+        requesterEmployeeNumber: requester.employeeNumber,
+        priority: created.priority,
+        description: created.description,
+        categoryName: issueCategory?.nameEn ?? null,
+        reasonName: issueReason?.nameEn ?? null,
+        ticketTypeName,
       }),
-      text: `New ticket ${code}: ${created.title}`,
+      text: [
+        `New ticket ${code}`,
+        created.title,
+        `Department: ${department.name}`,
+        `Requester: ${requester.name}`,
+        created.description || "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
     })
   }
 
@@ -366,15 +382,31 @@ export async function assignTicket(input: {
       meta: { assigneeId: assignee.id },
     })
 
+    const [department] = await db
+      .select({ name: departments.name })
+      .from(departments)
+      .where(eq(departments.id, ticket.departmentId))
+      .limit(1)
+    const [requester] = await db
+      .select({ name: users.name })
+      .from(users)
+      .where(eq(users.id, ticket.requesterId))
+      .limit(1)
+
     void sendEmail({
       to: assignee.email,
-      subject: `[${ticket.code}] Assigned to you`,
+      subject: `[${ticket.code}] Assigned to you · ${ticket.title}`,
       html: ticketAssignedEmailHtml({
         code: ticket.code,
         title: ticket.title,
         assigneeName: assignee.name,
+        departmentName: department?.name,
+        priority: ticket.priority,
+        status: nextStatus,
+        requesterName: requester?.name,
+        description: ticket.description,
       }),
-      text: `Ticket ${ticket.code} assigned to you`,
+      text: `Ticket ${ticket.code} assigned to you: ${ticket.title}`,
     })
 
     void sendSms({
@@ -468,15 +500,30 @@ export async function updateTicketStatus(input: {
     .where(eq(users.id, ticket.requesterId))
     .limit(1)
   if (requester) {
+    const [department] = await db
+      .select({ name: departments.name })
+      .from(departments)
+      .where(eq(departments.id, ticket.departmentId))
+      .limit(1)
+    const statusText = STATUS_LABELS[input.status] || input.status
+    const summary =
+      input.status === "ON_HOLD" && input.holdReason?.trim()
+        ? `Status is now ${statusText}. Reason: ${input.holdReason.trim()}`
+        : `Status is now ${statusText}.`
+
     void sendEmail({
       to: requester.email,
-      subject: `[${ticket.code}] Status: ${input.status}`,
+      subject: `[${ticket.code}] ${statusText} · ${ticket.title}`,
       html: ticketUpdatedEmailHtml({
         code: ticket.code,
         title: ticket.title,
-        summary: `Status is now ${input.status}`,
+        summary,
+        status: input.status,
+        priority: ticket.priority,
+        departmentName: department?.name,
+        updateLabel: "Status update",
       }),
-      text: `Ticket ${ticket.code} status: ${input.status}`,
+      text: `Ticket ${ticket.code}: ${summary}`,
     })
 
     if (input.status === "RESOLVED") {
@@ -549,6 +596,11 @@ export async function addComment(input: {
   })
 
   const { resolveMentions, addWatcher, notifyWatchers } = await import("@/server/tickets/ops")
+  const [department] = await db
+    .select({ name: departments.name })
+    .from(departments)
+    .where(eq(departments.id, ticket.departmentId))
+    .limit(1)
   const mentioned = await resolveMentions(body)
   for (const user of mentioned) {
     await addWatcher({
@@ -560,11 +612,15 @@ export async function addComment(input: {
     if (user.id !== input.actorId) {
       void sendEmail({
         to: user.email,
-        subject: `[${ticket.code}] You were mentioned`,
+        subject: `[${ticket.code}] You were mentioned · ${ticket.title}`,
         html: ticketUpdatedEmailHtml({
           code: ticket.code,
           title: ticket.title,
-          summary: body.slice(0, 280),
+          summary: body.slice(0, 500),
+          status: ticket.status,
+          priority: ticket.priority,
+          departmentName: department?.name,
+          updateLabel: "Mention",
         }),
         text: body,
       })
@@ -582,11 +638,15 @@ export async function addComment(input: {
       if (requester) {
         void sendEmail({
           to: requester.email,
-          subject: `[${ticket.code}] Progress update`,
+          subject: `[${ticket.code}] Progress update · ${ticket.title}`,
           html: ticketUpdatedEmailHtml({
             code: ticket.code,
             title: ticket.title,
-            summary: body.slice(0, 280),
+            summary: body.slice(0, 500),
+            status: ticket.status,
+            priority: ticket.priority,
+            departmentName: department?.name,
+            updateLabel: "Progress update",
           }),
           text: body,
         })
@@ -598,6 +658,10 @@ export async function addComment(input: {
       code: ticket.code,
       title: ticket.title,
       summary: isProgress ? `Progress: ${body.slice(0, 200)}` : `Comment: ${body.slice(0, 200)}`,
+      status: ticket.status,
+      priority: ticket.priority,
+      departmentName: department?.name,
+      updateLabel: isProgress ? "Progress update" : "New comment",
       excludeUserIds: exclude,
     })
   }
