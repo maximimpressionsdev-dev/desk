@@ -67,18 +67,18 @@ export const TOUR_FLOWS: Array<{
         bodyEn:
           "Open support-desk and enter your username or employee number. Use your Orbit password or NIC as the password, then press Sign in.",
         bodySi:
-          "support-desk විවෘත කර පරිශීලක නාමය හෝ සේවක අංකය ඇතුළත් කරන්න. Orbit මුරපදය හෝ NIC මුරපදය ලෙස භාවිතා කර Sign in ඔබන්න.",
+          "support-desk විවෘත කර ඔබගේ පරිශීලක නාමය හෝ සේවක අංකය ඇතුළත් කරන්න. මුරපදය ලෙස ඔබගේ Orbit මුරපදය හෝ NIC අංකය භාවිතා කර Sign in ඔබන්න.",
       },
       {
         id: "2",
         scene: "inbox-home",
         highlights: ["new-ticket-btn"],
         titleEn: "Start a new ticket",
-        titleSi: "නව ටිකට් එකක් අරඹන්න",
+        titleSi: "නව ටිකට් එකක් ආරම්භ කරන්න",
         bodyEn:
           "From the inbox, click New ticket in the sidebar or top bar. On desktop you can also press N on your keyboard.",
         bodySi:
-          "Inbox එකෙන් sidebar හෝ top bar එකේ New ticket ඔබන්න. Desktop මත N යතුරද භාවිතා කළ හැක.",
+          "Inbox එකෙන් sidebar එකේ හෝ ඉහළ bar එකේ New ticket තෝරන්න. Desktop පරිගණකයකදී යතුරුපුවරුවේ N යතුර එබීමෙන්ද නව ටිකට් එකක් ආරම්භ කළ හැක.",
       },
       {
         id: "3",
@@ -89,40 +89,40 @@ export const TOUR_FLOWS: Array<{
         bodyEn:
           "Choose department, main issue, and sub issue (English and Sinhala labels). Add optional notes and priority, then press Create.",
         bodySi:
-          "දෙපාර්තමේන්තුව, ප්‍රධාන සහ උප ගැටලුව තෝරන්න (ඉංග්‍රීසි/සිංහල). විකල්ප සටහන් සහ ප්‍රමුඛතාව එක් කර Create ඔබන්න.",
+          "අදාළ දෙපාර්තමේන්තුව, ප්‍රධාන ගැටලුව සහ උප ගැටලුව තෝරන්න. අවශ්‍ය නම් අමතර සටහන් සහ ප්‍රමුඛතාවද එක් කරන්න. ඉන්පසු Create ඔබන්න.",
       },
       {
         id: "4",
         scene: "inbox-track",
         highlights: ["mine-tab", "ticket-row"],
-        titleEn: "Track under I requested",
-        titleSi: "I requested යටතේ අනුගමනය කරන්න",
+        titleEn: "Track under My Tickets",
+        titleSi: "My Tickets යටතේ ඔබගේ ටිකට් අනුගමනය කරන්න",
         bodyEn:
-          "Open I requested in the sidebar to see every ticket you filed. The table shows code, status, priority, and assignee.",
+          "Open My Tickets in the sidebar to see every ticket you filed. The table shows code, status, priority, and assignee.",
         bodySi:
-          "ඔබ සාදන සියලු ටිකට් බැලීමට sidebar එකේ I requested විවෘත කරන්න. වගුවේ code, status, priority සහ assignee පෙනේ.",
+          "ඔබ විසින් ඉදිරිපත් කළ සියලුම ටිකට් බැලීමට sidebar එකේ My Tickets තෝරන්න. එහි ඇති වගුවෙන් ටිකට් අංකය (code), තත්ත්වය (status), ප්‍රමුඛතාව (priority) සහ පැවරී ඇති නියෝජිතයා (assignee) බැලිය හැක.",
       },
       {
         id: "5",
         scene: "ticket-detail",
         highlights: ["timeline"],
         titleEn: "Open a ticket for details",
-        titleSi: "විස්තර සඳහා ටිකට් එක විවෘත කරන්න",
+        titleSi: "විස්තර බැලීමට ටිකට් එක විවෘත කරන්න",
         bodyEn:
           "Click a row to open the ticket sheet. Read progress updates, comments, and status changes from your department.",
         bodySi:
-          "පේළියක් ඔබා ටිකට් sheet එක විවෘත කරන්න. දෙපාර්තමේන්තුවේ ප්‍රගති යාවත්කාලීන, අදහස් සහ status වෙනස්කම් කියවන්න.",
+          "අදාළ පේළිය තෝරා ටිකට් විස්තර විවෘත කරන්න. ඔබගේ දෙපාර්තමේන්තුවෙන් ලබා දී ඇති ප්‍රගති යාවත්කාලීන, අදහස් සහ තත්ත්වයේ වෙනස්කම් එහිදී බැලිය හැක.",
       },
       {
         id: "6",
         scene: "reset-help",
         highlights: ["reset-help"],
         titleEn: "Locked out? Ask IT",
-        titleSi: "පිවිසිය නොහැකිද? IT උදව් ඉල්ලන්න",
+        titleSi: "පද්ධතියට පිවිසීමට නොහැකිද? IT සහාය ඉල්ලන්න",
         bodyEn:
           "support-desk uses your Orbit password. If sign in still fails, use Request password reset help with your employee number. IT will contact you.",
         bodySi:
-          "support-desk Orbit මුරපද භාවිතා කරයි. පිවිසීම අසාර්ථක නම් Request password reset help වෙත ගොස් සේවක අංකය යවන්න. IT ඔබව සම්බන්ධ කරයි.",
+          "support-desk සඳහා ඔබගේ Orbit මුරපදය භාවිතා කරයි. Sign in කිරීමට තවමත් නොහැකි නම්, Request password reset help තෝරා ඔබගේ සේවක අංකය ලබා දෙන්න. ඉන්පසු IT කණ්ඩායම ඔබව සම්බන්ධ කර ගනු ඇත.",
       },
     ],
   },
@@ -140,18 +140,18 @@ export const TOUR_FLOWS: Array<{
         bodyEn:
           "Agents use the same sign-in screen as everyone else — username or employee number with Orbit password or NIC.",
         bodySi:
-          "නියෝජිතයන්ද අනෙක් අය මෙන්ම sign in තිරය භාවිතා කරයි — Orbit මුරපදය හෝ NIC සමඟ.",
+          "නියෝජිතයන් සඳහාද අනෙකුත් පරිශීලකයන් භාවිතා කරන Sign in තිරයම භාවිතා කරයි. ඔබගේ පරිශීලක නාමය හෝ සේවක අංකය ඇතුළත් කර, මුරපදය ලෙස Orbit මුරපදය හෝ NIC අංකය භාවිතා කරන්න.",
       },
       {
         id: "2",
         scene: "inbox-queue",
         highlights: ["queue-tab", "ticket-row"],
         titleEn: "Open the department queue",
-        titleSi: "දෙපාර්තමේන්තු Queue විවෘත කරන්න",
+        titleSi: "දෙපාර්තමේන්තු Queue එක විවෘත කරන්න",
         bodyEn:
           "Queue lists new and unassigned tickets for your departments. Use filters for status, priority, or department.",
         bodySi:
-          "Queue ඔබේ දෙපාර්තමේන්තුවල නව සහ unassigned ටිකට් පෙන්වයි. status, priority හෝ department අනුව filter කරන්න.",
+          "Queue එකෙන් ඔබට අදාළ දෙපාර්තමේන්තුවල නව සහ තවමත් නියෝජිතයෙකුට පවරා නොමැති ටිකට් බැලිය හැක. අවශ්‍ය ටිකට් ඉක්මනින් සොයා ගැනීමට status, priority හෝ department අනුව filters භාවිතා කරන්න.",
       },
       {
         id: "3",
@@ -162,29 +162,29 @@ export const TOUR_FLOWS: Array<{
         bodyEn:
           "For me shows tickets already assigned to you. Switch between Queue and For me from the sidebar views.",
         bodySi:
-          "For me ඔබට දැනටමත් පැවරූ ටිකට් පෙන්වයි. sidebar views වලින් Queue සහ For me අතර මාරු වන්න.",
+          "For me මගින් දැනටමත් ඔබට පවරා ඇති ටිකට් බැලිය හැක. Sidebar එකේ ඇති views භාවිතා කර Queue සහ For me අතර මාරු වන්න.",
       },
       {
         id: "4",
         scene: "ticket-claim",
         highlights: ["claim-btn"],
         titleEn: "Claim or assign",
-        titleSi: "භාරගන්න හෝ පවරන්න",
+        titleSi: "ටිකට් භාරගන්න හෝ පවරන්න",
         bodyEn:
           "Open a ticket from the queue and press Claim, or reassign it to another agent in the Reassign dropdown.",
         bodySi:
-          "Queue එකෙන් ටිකට් විවෘත කර Claim ඔබන්න, නැතහොත් Reassign dropdown එකෙන් වෙනත් නියෝජිතයෙකුට පවරන්න.",
+          "Queue එකෙන් ටිකට් එකක් විවෘත කර Claim ඔබා එය ඔබ වෙත භාරගන්න. එසේ නොමැති නම් Reassign dropdown එක භාවිතා කර ටිකට් එක වෙනත් නියෝජිතයෙකුට පවරන්න.",
       },
       {
         id: "5",
         scene: "ticket-progress",
         highlights: ["status-field"],
         titleEn: "Set status to In progress",
-        titleSi: "Status In progress කරන්න",
+        titleSi: "තත්ත්වය In progress ලෙස සකසන්න",
         bodyEn:
           "When you start working, tap In progress under Actions so the requester sees that work has begun.",
         bodySi:
-          "වැඩ අරඹන විට Actions යට In progress ඔබන්න — ඉල්ලුම්කරුට වැඩ ආරම්භ වූ බව පෙනේ.",
+          "ටිකට් එක සම්බන්ධයෙන් වැඩ ආරම්භ කළ පසු Actions යටතේ ඇති In progress තෝරන්න. එවිට වැඩ කටයුතු ආරම්භ කර ඇති බව ඉල්ලුම්කරුට දැනගත හැක.",
       },
       {
         id: "6",
@@ -195,18 +195,18 @@ export const TOUR_FLOWS: Array<{
         bodyEn:
           "Write a public progress update in the comment box and post it. Use internal notes for team-only messages.",
         bodySi:
-          "comment box එකේ public progress update ලියා post කරන්න. කණ්ඩායමට පමණ internal notes භාවිතා කරන්න.",
+          "Comment box එකේ ඉල්ලුම්කරුට දැකිය හැකි ප්‍රගති යාවත්කාලීනයක් ලියා Post කරන්න. කණ්ඩායමේ සාමාජිකයන්ට පමණක් දැකිය යුතු පණිවිඩ සඳහා Internal notes භාවිතා කරන්න.",
       },
       {
         id: "7",
         scene: "ticket-hold",
         highlights: ["hold-reason", "status-field"],
         titleEn: "Put on hold if blocked",
-        titleSi: "අවහිර නම් On hold කරන්න",
+        titleSi: "වැඩ කටයුතු අවහිර වී ඇත්නම් On hold කරන්න",
         bodyEn:
           "Waiting on parts, access, or another team? Set On hold and enter a clear reason the requester can understand.",
         bodySi:
-          "කොටස්, access හෝ වෙනත් කණ්ඩායමක් බලාපොරොත්තු වෙනවාද? On hold කර ඉල්ලුම්කරුට තේරෙන හේතුව ලියන්න.",
+          "අමතර කොටස්, ප්‍රවේශ අවසර හෝ වෙනත් කණ්ඩායමක සහාය බලාපොරොත්තු වන්නේ නම්, ටිකට් එක On hold ලෙස සකසන්න. එසේ කරන විට ඉල්ලුම්කරුට පහසුවෙන් තේරුම් ගත හැකි පැහැදිලි හේතුවක් සඳහන් කරන්න.",
       },
       {
         id: "8",
@@ -217,7 +217,7 @@ export const TOUR_FLOWS: Array<{
         bodyEn:
           "When the job is done, set status to Resolved. The requester is notified by email and SMS automatically.",
         bodySi:
-          "වැඩ අවසන් වූ විට status Resolved කරන්න. ඉල්ලුම්කරුට email සහ SMS ස්වයංක්‍රීයව යයි.",
+          "වැඩ කටයුතු සම්පූර්ණ වූ පසු ටිකට් එකේ status එක Resolved ලෙස සකසන්න. එවිට ඉල්ලුම්කරුට email සහ SMS මගින් ස්වයංක්‍රීයව දැනුම්දීමක් ලැබේ.",
       },
       {
         id: "9",
@@ -228,7 +228,7 @@ export const TOUR_FLOWS: Array<{
         bodyEn:
           "After confirmation or when no further action is needed, move the ticket to Closed to complete the lifecycle.",
         bodySi:
-          "තහවුරු කිරීමෙන් පසු හෝ වැඩ තවත් නොතිබේ නම් ticket Closed කර lifecycle එක අවසන් කරන්න.",
+          "ඉල්ලුම්කරුගෙන් තහවුරු කිරීම ලැබුණු පසු හෝ තවදුරටත් ක්‍රියාමාර්ගයක් අවශ්‍ය නොවන විට, ටිකට් එක Closed ලෙස සකසන්න. එමගින් ටිකට් එකේ ක්‍රියාවලිය සම්පූර්ණ වේ.",
       },
     ],
   },

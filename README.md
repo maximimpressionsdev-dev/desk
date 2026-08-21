@@ -29,7 +29,7 @@ Staff sign in with **username/employee number + password/NIC** (synced from Redi
 
 ## App surfaces
 
-- **Inbox** (`/`) — For me / I requested / Queue, with filters, overdue badges, bulk claim/close
+- **Inbox** (`/`) — For me / My Tickets / Queue, with filters, overdue badges, bulk claim/close
 - **Ticket sheet** — claim, status, reassign, watch, internal notes, canned replies, links, @mentions
 - **Admin** — invites, departments, membership, ticket types, notify email, canned replies
 
@@ -59,13 +59,13 @@ Desk reads `employees` and `departments` from Redis DB 3 and upserts them into P
 npm run db:sync
 ```
 
-Staff sign in with company email or employee number (same password hash as Redis). Employees without an email are stored as `{employeeNumber}@employee.desk.local`.
+Staff sign in with company email or employee number (same password hash as Redis). Employees without an email in Redis are stored with a null email.
 
 Set in `.env`:
 
 ```
 REDIS_HOST=159.138.98.55
-REDIS_PORT=63790
+REDIS_PORT=63792
 REDIS_DB=3
 ```
 

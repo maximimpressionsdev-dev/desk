@@ -4,20 +4,29 @@ import {
   notificationBaseUrl,
   notificationsConfigured,
 } from "@/server/notifications/client"
+import { isDeliverableEmail } from "@/server/email/base-url"
 
 export { appBaseUrl, appBaseUrlFromRequest, isDeliverableEmail } from "@/server/email/base-url"
 
+type Recipient = string | null | undefined
+
 type SendEmailInput = {
-  to: string | string[]
+  to: Recipient | Recipient[]
   subject: string
   html: string
   text?: string
-  cc?: string | string[]
-  bcc?: string | string[]
+  cc?: Recipient | Recipient[]
+  bcc?: Recipient | Recipient[]
+}
+
+function deliverableList(values: Recipient | Recipient[]): string[] {
+  return (Array.isArray(values) ? values : [values]).filter(
+    (v): v is string => isDeliverableEmail(v)
+  )
 }
 
 export async function sendEmail(input: SendEmailInput) {
-  const to = joinRecipients(input.to)
+  const to = joinRecipients(deliverableList(input.to))
   if (!to) {
     return { queued: false, skipped: true, reason: "no_recipients" as const }
   }
@@ -25,8 +34,8 @@ export async function sendEmail(input: SendEmailInput) {
   if (!notificationsConfigured()) {
     console.info("[email:dev]", {
       to,
-      cc: input.cc ? joinRecipients(input.cc) : undefined,
-      bcc: input.bcc ? joinRecipients(input.bcc) : undefined,
+      cc: input.cc ? joinRecipients(deliverableList(input.cc)) : undefined,
+      bcc: input.bcc ? joinRecipients(deliverableList(input.bcc)) : undefined,
       subject: input.subject,
       text: input.text,
       html: input.html,
@@ -40,10 +49,10 @@ export async function sendEmail(input: SendEmailInput) {
   form.append("subject", input.subject)
   form.append("message", input.html || input.text || "")
 
-  const cc = input.cc ? joinRecipients(input.cc) : ""
+  const cc = input.cc ? joinRecipients(deliverableList(input.cc)) : ""
   if (cc) form.append("cc", cc)
 
-  const bcc = input.bcc ? joinRecipients(input.bcc) : ""
+  const bcc = input.bcc ? joinRecipients(deliverableList(input.bcc)) : ""
   if (bcc) form.append("bcc", bcc)
 
   // Matches Maxim API: https://host//mail/emit

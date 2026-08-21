@@ -43,10 +43,10 @@ export async function POST(req: Request) {
       const recipients: string[] = []
       if (t.assigneeId) {
         const [a] = await db.select().from(users).where(eq(users.id, t.assigneeId)).limit(1)
-        if (a) recipients.push(a.email)
+        if (a?.email) recipients.push(a.email)
       }
       const [r] = await db.select().from(users).where(eq(users.id, t.requesterId)).limit(1)
-      if (r) recipients.push(r.email)
+      if (r?.email) recipients.push(r.email)
       const unique = [...new Set(recipients)]
       if (!unique.length) continue
       await sendEmail({

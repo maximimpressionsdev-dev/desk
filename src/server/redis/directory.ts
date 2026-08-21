@@ -27,6 +27,8 @@ export type RedisEmployee = {
   phone?: string | null
   phoneNumber?: string | null
   contactNumber?: string | null
+  /** Redis often stores this as a JSON string array, e.g. `["0771234567"]`. */
+  phoneNumbers?: string | string[] | null
 }
 
 type Cache = {
@@ -59,31 +61,52 @@ export async function loadDirectory(force = false) {
   return cache
 }
 
-export function placeholderEmail(employeeNumber: string) {
-  return `${employeeNumber.trim().toLowerCase()}@employee.desk.local`
-}
-
 export function employeeDisplayName(emp: RedisEmployee) {
   return (emp.callingName || emp.userName || emp.name || "Employee").trim()
 }
 
+/** Real company email only — never invent a local placeholder. */
 export function employeeEmail(emp: RedisEmployee) {
   const email = emp.email?.trim().toLowerCase()
   if (email && email.includes("@")) return email
-  const number = emp.employeeNumber?.trim()
-  if (number) return placeholderEmail(number)
   return null
 }
 
+function phoneCandidatesFromPhoneNumbers(
+  value: RedisEmployee["phoneNumbers"]
+): string[] {
+  if (!value) return []
+  if (Array.isArray(value)) {
+    return value.filter((v): v is string => typeof v === "string")
+  }
+  const trimmed = value.trim()
+  if (!trimmed) return []
+  try {
+    const parsed = JSON.parse(trimmed) as unknown
+    if (Array.isArray(parsed)) {
+      return parsed.filter((v): v is string => typeof v === "string")
+    }
+    if (typeof parsed === "string") return [parsed]
+  } catch {
+    // fall through — treat as a raw phone string
+  }
+  return [trimmed]
+}
+
 export function employeePhone(emp: RedisEmployee) {
-  const raw =
-    emp.mobilePhone ||
-    emp.mobile ||
-    emp.phone ||
-    emp.phoneNumber ||
-    emp.contactNumber ||
-    null
-  return normalizePhone(raw)
+  const candidates = [
+    emp.mobilePhone,
+    emp.mobile,
+    emp.phone,
+    emp.phoneNumber,
+    emp.contactNumber,
+    ...phoneCandidatesFromPhoneNumbers(emp.phoneNumbers),
+  ]
+  for (const raw of candidates) {
+    const phone = normalizePhone(raw)
+    if (phone) return phone
+  }
+  return null
 }
 
 export function normalizeIdNumber(value: string) {
@@ -96,7 +119,10 @@ export function findRedisEmployee(identifier: string, employees: RedisEmployee[]
   return (
     employees.find((e) => (e.userName || "").trim().toLowerCase() === needle) ||
     employees.find((e) => (e.employeeNumber || "").trim().toLowerCase() === needle) ||
-    employees.find((e) => employeeEmail(e) === needle) ||
+    employees.find((e) => {
+      const email = employeeEmail(e)
+      return Boolean(email && email === needle)
+    }) ||
     null
   )
 }

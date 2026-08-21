@@ -14,6 +14,8 @@
     "db:seed-issues": "tsx scripts/seed-issues.ts",
     "db:setup": "drizzle-kit push && tsx scripts/seed.ts",
     "db:sync": "tsx scripts/sync-redis.ts",
+    "db:reset-sync": "tsx scripts/reset-and-sync.ts",
+    "db:clear-placeholder-emails": "tsx scripts/clear-placeholder-emails.ts",
     "db:bootstrap": "tsx scripts/bootstrap-db.ts",
     "db:bootstrap-supabase": "tsx scripts/mirror-to-supabase.ts",
     "db:verify": "tsx scripts/verify-db.ts",

@@ -34,7 +34,7 @@ export type MockInboxTab = "for-me" | "mine" | "queue"
 
 const NAV = [
   { id: "for-me" as const, label: "For me", icon: ClipboardList },
-  { id: "mine" as const, label: "I requested", icon: Inbox },
+  { id: "mine" as const, label: "My Tickets", icon: Inbox },
   { id: "queue" as const, label: "Queue", icon: LayoutList },
 ]
 

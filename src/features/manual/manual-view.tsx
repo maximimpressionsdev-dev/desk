@@ -23,8 +23,8 @@ export function ManualView() {
             <Ticket className="size-4" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold tracking-tight">support-desk user manual</p>
-            <p className="text-muted-foreground truncate text-[11px]">Interactive tour · පරිශීලක අත්පොත</p>
+            <p className="truncate text-sm font-semibold tracking-tight">support-desk පරිශීලක අත්පොත</p>
+            <p className="text-muted-foreground truncate text-[11px]">User manual · Interactive tour</p>
           </div>
           <ThemeToggle />
           <Button size="sm" variant="outline" render={<Link href="/login" />}>

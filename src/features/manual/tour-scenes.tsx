@@ -536,7 +536,7 @@ export function TourScene({
     case "inbox-create":
       return <InboxMain tab="for-me" title="For me" highlights={highlights} showDialog />
     case "inbox-track":
-      return <InboxMain tab="mine" title="I requested" highlights={highlights} />
+      return <InboxMain tab="mine" title="My Tickets" highlights={highlights} />
     case "inbox-queue":
       return <InboxMain tab="queue" title="Queue" highlights={highlights} />
     case "inbox-for-me":

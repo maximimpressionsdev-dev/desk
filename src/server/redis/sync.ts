@@ -78,12 +78,17 @@ async function upsertDepartment(input: {
 async function upsertEmployee(
   emp: RedisEmployee,
   localDeptId: number | null,
-  seenEmails: Set<string>
+  seenEmails: Set<string>,
+  seenExternalIds: Set<number>
 ) {
+  if (!emp.id || seenExternalIds.has(emp.id)) return "skip" as const
+  seenExternalIds.add(emp.id)
+
   const email = employeeEmail(emp)
-  if (!email) return "skip" as const
-  if (seenEmails.has(email)) return "skip" as const
-  seenEmails.add(email)
+  if (email) {
+    if (seenEmails.has(email)) return "skip" as const
+    seenEmails.add(email)
+  }
 
   const employeeNumber = emp.employeeNumber?.trim() || null
   const username = emp.userName?.trim() || null
@@ -97,7 +102,9 @@ async function upsertEmployee(
     .from(users)
     .where(eq(users.externalId, emp.id))
     .limit(1)
-  const byEmail = await db.select().from(users).where(eq(users.email, email)).limit(1)
+  const byEmail = email
+    ? await db.select().from(users).where(eq(users.email, email)).limit(1)
+    : []
   const byNumber =
     employeeNumber && !byExternal[0] && !byEmail[0]
       ? await db
@@ -125,7 +132,7 @@ async function upsertEmployee(
   let userId: number
   try {
     if (existing) {
-      if (existing.email !== email) {
+      if (email && existing.email !== email) {
         const clash = await db.select().from(users).where(eq(users.email, email)).limit(1)
         if (clash[0] && clash[0].id !== existing.id) return "skip" as const
       }
@@ -202,6 +209,7 @@ export async function syncDirectoryFromRedis(): Promise<DirectorySyncResult> {
   }
 
   const seenEmails = new Set<string>()
+  const seenExternalIds = new Set<number>()
   let usersUpserted = 0
   let skipped = 0
   let memberships = 0
@@ -212,7 +220,7 @@ export async function syncDirectoryFromRedis(): Promise<DirectorySyncResult> {
       continue
     }
     const localDeptId = emp.departmentId ? deptIdMap.get(emp.departmentId) || null : null
-    const result = await upsertEmployee(emp, localDeptId, seenEmails)
+    const result = await upsertEmployee(emp, localDeptId, seenEmails, seenExternalIds)
     if (result === "skip") {
       skipped++
       continue
@@ -231,9 +239,8 @@ export async function ensureUserFromRedis(identifier: string) {
   if (!emp) return null
 
   const email = employeeEmail(emp)
-  if (!email) return null
-
   const seen = new Set<string>()
+  const seenExternal = new Set<number>()
   const redisDept = departments.find((d) => d.id === emp.departmentId)
   let localDeptId: number | null = null
   if (redisDept) {
@@ -244,7 +251,7 @@ export async function ensureUserFromRedis(identifier: string) {
     })
     localDeptId = row.id
   }
-  await upsertEmployee(emp, localDeptId, seen)
+  await upsertEmployee(emp, localDeptId, seen, seenExternal)
 
   const [byExternal] = await db
     .select()
@@ -252,6 +259,7 @@ export async function ensureUserFromRedis(identifier: string) {
     .where(eq(users.externalId, emp.id))
     .limit(1)
   if (byExternal) return byExternal
+  if (!email) return null
   const [byEmail] = await db.select().from(users).where(eq(users.email, email)).limit(1)
   return byEmail || null
 }

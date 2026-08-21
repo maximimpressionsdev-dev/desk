@@ -24,7 +24,8 @@ type Department = {
 type UserRow = {
   id: number
   name: string
-  email: string
+  email: string | null
+  employeeNumber?: string | null
   role: "USER" | "ADMIN"
   active: boolean
   departmentIds: number[]
@@ -247,7 +248,7 @@ export default function AdminPage() {
           <CardTitle>Company directory</CardTitle>
           <CardDescription>
             Pull departments and employees from Redis. Staff can then sign in with company email
-            or employee number.
+            or employee number. Users without an email in Redis are stored with an empty email.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap items-center gap-3 pt-4">
@@ -399,7 +400,7 @@ export default function AdminPage() {
                   <option value="">Select user</option>
                   {(usersQuery.data || []).map((u) => (
                     <option key={u.id} value={u.id}>
-                      {u.name} ({u.email})
+                      {u.name} ({u.email || u.employeeNumber || "no email"})
                     </option>
                   ))}
                 </NativeSelect>
@@ -607,7 +608,7 @@ export default function AdminPage() {
                   {(usersQuery.data || []).map((u) => (
                     <tr key={u.id} className="border-border/40 border-t">
                       <td className="py-3 pr-4 font-medium">{u.name}</td>
-                      <td className="text-muted-foreground py-3 pr-4">{u.email}</td>
+                      <td className="text-muted-foreground py-3 pr-4">{u.email || "—"}</td>
                       <td className="py-3 pr-4">{u.role}</td>
                       <td className="py-3 pr-4">{u.active ? "Yes" : "No"}</td>
                       <td className="py-3">

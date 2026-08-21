@@ -28,7 +28,8 @@ export function appBaseUrlFromRequest(req: Request | NextRequest) {
   return normalizeBaseUrl(`${proto}://${host}`)
 }
 
-export function isDeliverableEmail(email: string) {
+export function isDeliverableEmail(email: string | null | undefined) {
+  if (!email?.trim()) return false
   const normalized = email.trim().toLowerCase()
   if (!normalized.includes("@")) return false
   if (normalized.endsWith("@employee.desk.local")) return false
