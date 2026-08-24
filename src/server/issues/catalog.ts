@@ -255,7 +255,7 @@ export async function listMergedIssues(opts: {
         if (!includeInactive && !dbReason.active) continue
         usedReasonIds.add(dbReason.id)
         reasons.push({
-          id: dbReason.id,
+          id: Number(dbReason.id),
           nameEn: dbReason.nameEn,
           nameSi: dbReason.nameSi,
           active: dbReason.active,
@@ -276,7 +276,7 @@ export async function listMergedIssues(opts: {
       if (usedReasonIds.has(extra.id)) continue
       usedReasonIds.add(extra.id)
       reasons.push({
-        id: extra.id,
+        id: Number(extra.id),
         nameEn: extra.nameEn,
         nameSi: extra.nameSi,
         active: extra.active,
@@ -285,7 +285,7 @@ export async function listMergedIssues(opts: {
     }
 
     merged.push({
-      id: dbCategory.id,
+      id: Number(dbCategory.id),
       departmentId: dbCategory.departmentId,
       nameEn: dbCategory.nameEn,
       nameSi: dbCategory.nameSi,
@@ -301,14 +301,14 @@ export async function listMergedIssues(opts: {
       (reason) => !usedReasonIds.has(reason.id)
     )
     merged.push({
-      id: extraCategory.id,
+      id: Number(extraCategory.id),
       departmentId: extraCategory.departmentId,
       nameEn: extraCategory.nameEn,
       nameSi: extraCategory.nameSi,
       active: extraCategory.active,
       sortOrder: extraCategory.sortOrder,
       reasons: extraReasons.map((reason) => ({
-        id: reason.id,
+        id: Number(reason.id),
         nameEn: reason.nameEn,
         nameSi: reason.nameSi,
         active: reason.active,
@@ -376,40 +376,95 @@ export async function seedIssueCatalog() {
   return { categories, reasons }
 }
 
+function issueId(value?: number | null) {
+  const id = typeof value === "number" ? value : Number(value)
+  return Number.isFinite(id) && id !== 0 ? id : null
+}
+
+function assertIssueDepartment(
+  category: { departmentId: number | null },
+  departmentId: number
+) {
+  if (category.departmentId == null) return
+  if (Number(category.departmentId) !== Number(departmentId)) {
+    throw new ApiError(400, "Issue does not belong to this department")
+  }
+}
+
 export async function persistSelectedIssue(opts: {
   departmentId: number
   issueCategoryId?: number | null
   issueReasonId?: number | null
 }) {
-  if (!opts.issueCategoryId && !opts.issueReasonId) {
+  const categoryId = issueId(opts.issueCategoryId)
+  const reasonId = issueId(opts.issueReasonId)
+  if (!categoryId && !reasonId) {
     return { category: null, reason: null }
+  }
+
+  // Prefer the real DB rows the form selected. The merged catalog can hide extra
+  // sub-issues or use synthetic ids, which made "Invalid main issue" appear only
+  // after a sub issue was chosen.
+  if (reasonId && reasonId > 0) {
+    const [reason] = await db
+      .select()
+      .from(issueReasons)
+      .where(and(eq(issueReasons.id, reasonId), eq(issueReasons.active, true)))
+      .limit(1)
+    if (!reason) throw new ApiError(400, "Invalid sub issue")
+
+    const [category] = await db
+      .select()
+      .from(issueCategories)
+      .where(and(eq(issueCategories.id, reason.categoryId), eq(issueCategories.active, true)))
+      .limit(1)
+    if (!category) throw new ApiError(400, "Invalid main issue")
+    if (categoryId && categoryId > 0 && categoryId !== category.id) {
+      throw new ApiError(400, "Sub issue does not belong to the selected main issue")
+    }
+    assertIssueDepartment(category, opts.departmentId)
+    return { category, reason }
+  }
+
+  if (categoryId && categoryId > 0) {
+    const [category] = await db
+      .select()
+      .from(issueCategories)
+      .where(and(eq(issueCategories.id, categoryId), eq(issueCategories.active, true)))
+      .limit(1)
+    if (!category) throw new ApiError(400, "Invalid main issue")
+    assertIssueDepartment(category, opts.departmentId)
+    return { category, reason: null }
   }
 
   const merged = await listMergedIssues({ departmentId: opts.departmentId })
   const selectedCategory =
-    merged.find((category) => category.id === opts.issueCategoryId) ??
-    merged.find((category) =>
-      category.reasons.some((reason) => reason.id === opts.issueReasonId)
-    )
+    merged.find((category) => category.id === categoryId) ??
+    merged.find((category) => category.reasons.some((reason) => reason.id === reasonId))
   if (!selectedCategory) throw new ApiError(400, "Invalid main issue")
 
-  const selectedReason = opts.issueReasonId
-    ? selectedCategory.reasons.find((reason) => reason.id === opts.issueReasonId)
+  const selectedReason = reasonId
+    ? selectedCategory.reasons.find((reason) => reason.id === reasonId)
     : null
-  if (opts.issueReasonId && !selectedReason) throw new ApiError(400, "Invalid sub issue")
+  if (reasonId && !selectedReason) throw new ApiError(400, "Invalid sub issue")
 
-  let category = selectedCategory.id > 0
-    ? (
-        await db
-          .select()
-          .from(issueCategories)
-          .where(and(eq(issueCategories.id, selectedCategory.id), eq(issueCategories.active, true)))
-          .limit(1)
-      )[0]
-    : undefined
+  let category = (
+    await db
+      .select()
+      .from(issueCategories)
+      .where(
+        and(
+          eq(issueCategories.nameEn, selectedCategory.nameEn),
+          selectedCategory.departmentId == null
+            ? isNull(issueCategories.departmentId)
+            : eq(issueCategories.departmentId, selectedCategory.departmentId),
+          eq(issueCategories.active, true)
+        )
+      )
+      .limit(1)
+  )[0]
 
   if (!category) {
-    if (selectedCategory.id > 0) throw new ApiError(400, "Invalid main issue")
     const [created] = await db
       .insert(issueCategories)
       .values({
@@ -423,27 +478,24 @@ export async function persistSelectedIssue(opts: {
     category = created
   }
 
-  if (
-    category.departmentId != null &&
-    category.departmentId !== opts.departmentId
-  ) {
-    throw new ApiError(400, "Issue does not belong to this department")
-  }
-
+  assertIssueDepartment(category, opts.departmentId)
   if (!selectedReason) return { category, reason: null }
 
-  let reason = selectedReason.id > 0
-    ? (
-        await db
-          .select()
-          .from(issueReasons)
-          .where(and(eq(issueReasons.id, selectedReason.id), eq(issueReasons.active, true)))
-          .limit(1)
-      )[0]
-    : undefined
+  let reason = (
+    await db
+      .select()
+      .from(issueReasons)
+      .where(
+        and(
+          eq(issueReasons.categoryId, category.id),
+          eq(issueReasons.nameEn, selectedReason.nameEn),
+          eq(issueReasons.active, true)
+        )
+      )
+      .limit(1)
+  )[0]
 
   if (!reason) {
-    if (selectedReason.id > 0) throw new ApiError(400, "Invalid sub issue")
     const [created] = await db
       .insert(issueReasons)
       .values({
