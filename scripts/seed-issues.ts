@@ -3,7 +3,7 @@ import { seedIssueCatalog } from "../src/server/issues/catalog"
 
 seedIssueCatalog()
   .then((result) => {
-    console.log("Issue catalog seed complete", result)
+    console.log("Issue catalog (from database)", result)
     process.exit(0)
   })
   .catch((err) => {

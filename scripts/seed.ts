@@ -76,7 +76,7 @@ async function main() {
   }
 
   const issues = await seedIssueCatalog()
-  console.log("Issue catalog:", issues)
+  console.log("Issue catalog (from database):", issues)
   console.log("Seed complete")
   process.exit(0)
 }
