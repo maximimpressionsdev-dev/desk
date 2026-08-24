@@ -7,7 +7,7 @@ import Link from "next/link"
 import { toast } from "sonner"
 import { Ticket } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ThemeToggle } from "@/components/shared/theme-toggle"
@@ -57,11 +57,6 @@ function LoginForm() {
           <Ticket className="size-5" />
         </div>
         <CardTitle className="text-xl">Sign in</CardTitle>
-        <CardDescription>
-          Staff sign in with company credentials from ERP (username or employee number + ERP
-          password or NIC). Password reset here is only for invited Desk accounts, not synced
-          employees.
-        </CardDescription>
       </CardHeader>
       <CardContent>
         <form className="space-y-4" onSubmit={onSubmit}>
