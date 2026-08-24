@@ -86,11 +86,7 @@ function LoginForm() {
             {loading ? "Signing in…" : "Sign in"}
           </Button>
         </form>
-        <div className="text-muted-foreground mt-4 space-y-2 text-center text-xs leading-relaxed">
-          <p>
-            Locked out? Use your company ERP password or your NIC. If access still fails, send a
-            reset help request to IT.
-          </p>
+        <div className="text-muted-foreground mt-4 text-center text-xs leading-relaxed">
           <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
             <Link href="/reset-password" className="hover:text-foreground underline-offset-4 hover:underline">
               Request password reset help
