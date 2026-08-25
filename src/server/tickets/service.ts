@@ -22,6 +22,7 @@ import { sendSms } from "@/server/notifications/sms"
 import {
   ticketAssignedEmailHtml,
   ticketCreatedEmailHtml,
+  ticketSubmittedEmailHtml,
   ticketUpdatedEmailHtml,
 } from "@/server/email/templates"
 
@@ -303,15 +304,13 @@ export async function createTicket(input: {
     ),
   ]
   const requesterEmail = requester.email?.trim() || ""
-  const ccRequester =
-    requesterEmail && !recipients.some((email) => email.toLowerCase() === requesterEmail.toLowerCase())
-      ? requesterEmail
-      : undefined
+  const alreadyNotified =
+    Boolean(requesterEmail) &&
+    recipients.some((email) => email.toLowerCase() === requesterEmail.toLowerCase())
 
-  if (recipients.length || ccRequester) {
+  if (recipients.length) {
     await sendEmail({
-      to: recipients.length ? recipients : ccRequester,
-      cc: recipients.length ? ccRequester : undefined,
+      to: recipients,
       subject: `[${code}] New ticket · ${created.title}`,
       html: ticketCreatedEmailHtml({
         code,
@@ -334,6 +333,23 @@ export async function createTicket(input: {
       ]
         .filter(Boolean)
         .join("\n"),
+    })
+  }
+
+  if (requesterEmail && !alreadyNotified) {
+    await sendEmail({
+      to: requesterEmail,
+      subject: `[${code}] Ticket submitted · ${created.title}`,
+      html: ticketSubmittedEmailHtml({
+        code,
+        title: created.title,
+        departmentName: department.name,
+        requesterName: requester.name,
+        priority: created.priority,
+        categoryName: issueCategory?.nameEn ?? null,
+        reasonName: issueReason?.nameEn ?? null,
+      }),
+      text: `Your ticket ${code} was submitted to ${department.name}.`,
     })
   }
 

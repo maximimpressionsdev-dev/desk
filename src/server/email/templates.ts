@@ -185,6 +185,33 @@ export function ticketCreatedEmailHtml(opts: {
   })
 }
 
+export function ticketSubmittedEmailHtml(opts: {
+  code: string
+  title: string
+  departmentName: string
+  requesterName: string
+  priority?: string | null
+  categoryName?: string | null
+  reasonName?: string | null
+}) {
+  const url = ticketUrl(opts.code)
+  return emailShell({
+    eyebrow: "Ticket submitted",
+    headline: opts.title,
+    intro: `Hi ${opts.requesterName}, your ticket ${opts.code} was submitted to ${opts.departmentName}. They will review it in ${BRAND}.`,
+    details: [
+      { label: "Ticket", value: opts.code },
+      { label: "Sent to", value: opts.departmentName },
+      { label: "Priority", value: priorityLabel(opts.priority) },
+      { label: "Category", value: opts.categoryName },
+      { label: "Reason", value: opts.reasonName },
+    ],
+    ctaHref: url,
+    ctaLabel: "View ticket",
+    footerNote: "You will get another email when this ticket is updated.",
+  })
+}
+
 export function ticketAssignedEmailHtml(opts: {
   code: string
   title: string
