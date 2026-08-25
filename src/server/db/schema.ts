@@ -324,3 +324,9 @@ export type TicketPriority = (typeof ticketPriorityEnum.enumValues)[number]
 export type UserRole = (typeof userRoleEnum.enumValues)[number]
 export type IssueCategory = typeof issueCategories.$inferSelect
 export type IssueReason = typeof issueReasons.$inferSelect
+
+export const healthLogs = pgTable("health_logs", {
+  id: serial("id").primaryKey(),
+  note: varchar("note", { length: 200 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+})

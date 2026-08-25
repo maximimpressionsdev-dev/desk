@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
-import { and, eq, isNotNull, lt, sql } from "drizzle-orm"
+import { and, desc, eq, isNotNull, lt, sql } from "drizzle-orm"
 import { db } from "@/server/db"
-import { tickets, users } from "@/server/db/schema"
+import { healthLogs, tickets, users } from "@/server/db/schema"
 import { sendEmail } from "@/server/email"
 import { digestEmailHtml, ticketUpdatedEmailHtml } from "@/server/email/templates"
 
@@ -11,13 +11,42 @@ function authorized(req: Request) {
   return req.headers.get("authorization") === `Bearer ${secret}`
 }
 
-export async function POST(req: Request) {
+async function runCron(req: Request) {
   if (!authorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
   const url = new URL(req.url)
   const job = url.searchParams.get("job") || "overdue"
+
+  if (job === "health") {
+    const [previous] = await db
+      .select({
+        id: healthLogs.id,
+        note: healthLogs.note,
+        createdAt: healthLogs.createdAt,
+      })
+      .from(healthLogs)
+      .orderBy(desc(healthLogs.createdAt))
+      .limit(1)
+
+    const [created] = await db
+      .insert(healthLogs)
+      .values({
+        note: `keepalive ${new Date().toISOString()}`,
+      })
+      .returning()
+
+    await db.execute(sql`DELETE FROM health_logs WHERE created_at < now() - interval '60 days'`)
+
+    return NextResponse.json({
+      job: "health",
+      previous: previous
+        ? { id: previous.id, note: previous.note, createdAt: previous.createdAt }
+        : null,
+      written: { id: created.id, note: created.note, createdAt: created.createdAt },
+    })
+  }
 
   if (job === "overdue") {
     const overdue = await db
@@ -125,4 +154,12 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ error: "Unknown job" }, { status: 400 })
+}
+
+export async function GET(req: Request) {
+  return runCron(req)
+}
+
+export async function POST(req: Request) {
+  return runCron(req)
 }
