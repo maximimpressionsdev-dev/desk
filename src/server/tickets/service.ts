@@ -302,10 +302,16 @@ export async function createTicket(input: {
       ].filter(Boolean) as string[]
     ),
   ]
+  const requesterEmail = requester.email?.trim() || ""
+  const ccRequester =
+    requesterEmail && !recipients.some((email) => email.toLowerCase() === requesterEmail.toLowerCase())
+      ? requesterEmail
+      : undefined
 
-  if (recipients.length) {
-    void sendEmail({
-      to: recipients,
+  if (recipients.length || ccRequester) {
+    await sendEmail({
+      to: recipients.length ? recipients : ccRequester,
+      cc: recipients.length ? ccRequester : undefined,
       subject: `[${code}] New ticket · ${created.title}`,
       html: ticketCreatedEmailHtml({
         code,
@@ -393,7 +399,7 @@ export async function assignTicket(input: {
       .where(eq(users.id, ticket.requesterId))
       .limit(1)
 
-    void sendEmail({
+    await sendEmail({
       to: assignee.email,
       subject: `[${ticket.code}] Assigned to you · ${ticket.title}`,
       html: ticketAssignedEmailHtml({
@@ -409,7 +415,7 @@ export async function assignTicket(input: {
       text: `Ticket ${ticket.code} assigned to you: ${ticket.title}`,
     })
 
-    void sendSms({
+    await sendSms({
       to: assignee.phone || "",
       text: `Desk: Ticket ${ticket.code} assigned to you — ${ticket.title}`,
     })
@@ -511,7 +517,7 @@ export async function updateTicketStatus(input: {
         ? `Status is now ${statusText}. Reason: ${input.holdReason.trim()}`
         : `Status is now ${statusText}.`
 
-    void sendEmail({
+    await sendEmail({
       to: requester.email,
       subject: `[${ticket.code}] ${statusText} · ${ticket.title}`,
       html: ticketUpdatedEmailHtml({
@@ -528,7 +534,7 @@ export async function updateTicketStatus(input: {
 
     if (input.status === "RESOLVED") {
       const url = `${appBaseUrl()}/tickets/${ticket.code}`.trim()
-      void sendSms({
+      await sendSms({
         to: requester.phone || "",
         text: `Desk: Ticket ${ticket.code} resolved — ${ticket.title}${url ? ` ${url}` : ""}`,
       })
@@ -610,7 +616,7 @@ export async function addComment(input: {
       userId: user.id,
     })
     if (user.id !== input.actorId) {
-      void sendEmail({
+      await sendEmail({
         to: user.email,
         subject: `[${ticket.code}] You were mentioned · ${ticket.title}`,
         html: ticketUpdatedEmailHtml({
@@ -636,7 +642,7 @@ export async function addComment(input: {
         .where(eq(users.id, ticket.requesterId))
         .limit(1)
       if (requester) {
-        void sendEmail({
+        await sendEmail({
           to: requester.email,
           subject: `[${ticket.code}] Progress update · ${ticket.title}`,
           html: ticketUpdatedEmailHtml({

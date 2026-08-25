@@ -59,20 +59,26 @@ export async function sendEmail(input: SendEmailInput) {
   const url = `${notificationBaseUrl()}/mail/emit`
   console.info("[email] sending", { url, to, subject: input.subject })
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "x-key": notificationApiKey(),
-    },
-    body: form,
-  })
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "x-key": notificationApiKey(),
+      },
+      body: form,
+      signal: AbortSignal.timeout(12_000),
+    })
 
-  const body = await res.text().catch(() => "")
-  if (!res.ok) {
-    console.error("[email] failed", res.status, body)
-    throw new Error(`Email send failed (${res.status}): ${body.slice(0, 300)}`)
+    const body = await res.text().catch(() => "")
+    if (!res.ok) {
+      console.error("[email] failed", res.status, body)
+      return { queued: false, error: true, status: res.status }
+    }
+
+    console.info("[email] sent", { status: res.status, body: body.slice(0, 300) })
+    return { queued: true, logged: false, status: res.status }
+  } catch (error) {
+    console.error("[email] failed", error)
+    return { queued: false, error: true }
   }
-
-  console.info("[email] sent", { status: res.status, body: body.slice(0, 300) })
-  return { queued: true, logged: false, status: res.status }
 }

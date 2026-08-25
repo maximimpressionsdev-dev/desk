@@ -98,7 +98,7 @@ export async function notifyWatchers(input: {
     .filter((w) => !exclude.has(w.userId))
     .map((w) => w.email)
   if (!emails.length) return
-  void sendEmail({
+  await sendEmail({
     to: emails,
     subject: `[${input.code}] ${input.updateLabel || "Update"} · ${input.title}`.slice(0, 120),
     html: ticketUpdatedEmailHtml({

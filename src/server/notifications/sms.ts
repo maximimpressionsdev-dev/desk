@@ -27,29 +27,36 @@ export async function sendSms(input: SendSmsInput) {
     return { queued: false, logged: true }
   }
 
-  const res = await fetch(`${notificationBaseUrl()}/sms/emit`, {
-    method: "POST",
-    headers: {
-      "x-key": notificationApiKey(),
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      to: phones,
-      text: input.text,
-      alias,
-      message_type: 1,
-      multilang: true,
-      pattern: "send_sms",
-    }),
-  })
+  try {
+    const res = await fetch(`${notificationBaseUrl()}/sms/emit`, {
+      method: "POST",
+      headers: {
+        "x-key": notificationApiKey(),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        to: phones,
+        text: input.text,
+        alias,
+        message_type: 1,
+        multilang: true,
+        pattern: "send_sms",
+      }),
+      signal: AbortSignal.timeout(12_000),
+    })
 
-  if (!res.ok) {
-    const body = await res.text().catch(() => "")
-    console.error("[sms] failed", res.status, body)
-    throw new Error(`SMS send failed (${res.status})`)
+    if (!res.ok) {
+      const body = await res.text().catch(() => "")
+      console.error("[sms] failed", res.status, body)
+      return { queued: false, error: true, status: res.status }
+    }
+
+    console.info("[sms] sent", { to: phones.length })
+    return { queued: true, logged: false }
+  } catch (error) {
+    console.error("[sms] failed", error)
+    return { queued: false, error: true }
   }
-
-  return { queued: true, logged: false }
 }
 
 export function smsRecipients(values: Array<string | null | undefined>) {
