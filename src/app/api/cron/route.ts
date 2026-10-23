@@ -5,6 +5,9 @@ import { healthLogs, tickets, users } from "@/server/db/schema"
 import { sendEmail } from "@/server/email"
 import { digestEmailHtml, ticketUpdatedEmailHtml } from "@/server/email/templates"
 
+// The MariaDB backup copies every table, so give it room beyond the default limit.
+export const maxDuration = 300
+
 function authorized(req: Request) {
   const secret = process.env.CRON_SECRET
   if (!secret) return process.env.NODE_ENV !== "production"
@@ -151,6 +154,23 @@ async function runCron(req: Request) {
     const { syncDirectoryFromRedis } = await import("@/server/redis/sync")
     const result = await syncDirectoryFromRedis()
     return NextResponse.json({ job: "sync", ...result })
+  }
+
+  if (job === "backup") {
+    const { backupToMariaDb, mariadbConfigured } = await import("@/server/backup/mariadb")
+    if (!mariadbConfigured()) {
+      return NextResponse.json({ error: "MariaDB backup is not configured" }, { status: 400 })
+    }
+    try {
+      const result = await backupToMariaDb()
+      return NextResponse.json({ job: "backup", ...result })
+    } catch (error) {
+      console.error("[cron] backup failed", error)
+      return NextResponse.json(
+        { job: "backup", error: error instanceof Error ? error.message : "Backup failed" },
+        { status: 500 }
+      )
+    }
   }
 
   return NextResponse.json({ error: "Unknown job" }, { status: 400 })

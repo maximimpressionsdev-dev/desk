@@ -3,6 +3,10 @@
     {
       "path": "/api/cron?job=health",
       "schedule": "30 18 * * *"
+    },
+    {
+      "path": "/api/cron?job=backup",
+      "schedule": "30 6 * * *"
     }
   ]
 }
