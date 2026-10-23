@@ -17,7 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Skeleton } from "@/components/ui/skeleton"
+import { NativeSelect } from "@/components/ui/native-select"
 import { Textarea } from "@/components/ui/textarea"
 
 type Department = { id: number; name: string; active: boolean }
@@ -158,62 +158,63 @@ export function NewTicketDialog({
           className="flex min-h-0 flex-1 flex-col"
         >
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
-            <Field label="Department">
-              {departmentsQuery.isLoading ? (
-                <ChipSkeleton count={3} />
-              ) : (
-                <ChipGroup label="Department">
-                  {departments.map((d) => (
-                    <Chip
-                      key={d.id}
-                      selected={String(d.id) === departmentId}
-                      onSelect={() => chooseDepartment(String(d.id))}
-                      label={d.name}
-                    />
-                  ))}
-                </ChipGroup>
-              )}
+            <Field label="Department" htmlFor="nt-dept">
+              <NativeSelect
+                id="nt-dept"
+                className="h-9"
+                value={departmentId}
+                onChange={(e) => chooseDepartment(e.target.value)}
+              >
+                <option value="">Select department…</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </NativeSelect>
             </Field>
 
-            {departmentId ? (
-              <Field label="Issue">
-                {issuesQuery.isLoading ? (
-                  <ChipSkeleton count={4} />
-                ) : issuesQuery.data?.length ? (
-                  <ChipGroup label="Main issue">
-                    {issuesQuery.data.map((c) => (
-                      <Chip
-                        key={c.id}
-                        selected={String(c.id) === categoryId}
-                        onSelect={() => chooseCategory(String(c.id))}
-                        label={c.nameEn}
-                        secondary={c.nameSi !== c.nameEn ? c.nameSi : undefined}
-                      />
-                    ))}
-                  </ChipGroup>
-                ) : (
-                  <p className="text-muted-foreground py-1.5 text-sm">
-                    No issues are set up for this department yet.
-                  </p>
-                )}
-              </Field>
-            ) : null}
+            <Field label="Issue" htmlFor="nt-issue">
+              <NativeSelect
+                id="nt-issue"
+                className="h-9"
+                value={categoryId}
+                disabled={!departmentId || issuesQuery.isLoading}
+                onChange={(e) => chooseCategory(e.target.value)}
+              >
+                <option value="">
+                  {!departmentId
+                    ? "Pick a department first"
+                    : issuesQuery.isLoading
+                      ? "Loading…"
+                      : issuesQuery.data?.length
+                        ? "Select issue…"
+                        : "No issues set up for this department"}
+                </option>
+                {(issuesQuery.data || []).map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {bilingual(c.nameEn, c.nameSi)}
+                  </option>
+                ))}
+              </NativeSelect>
+            </Field>
 
-            {selectedCategory && selectedCategory.reasons.length > 1 ? (
-              <Field label="Sub issue">
-                <ChipGroup label="Sub issue">
-                  {selectedCategory.reasons.map((r) => (
-                    <Chip
-                      key={r.id}
-                      selected={String(r.id) === reasonId}
-                      onSelect={() => setReasonId(String(r.id))}
-                      label={r.nameEn}
-                      secondary={r.nameSi !== r.nameEn ? r.nameSi : undefined}
-                    />
-                  ))}
-                </ChipGroup>
-              </Field>
-            ) : null}
+            <Field label="Sub issue" htmlFor="nt-reason">
+              <NativeSelect
+                id="nt-reason"
+                className="h-9"
+                value={reasonId}
+                disabled={!categoryId}
+                onChange={(e) => setReasonId(e.target.value)}
+              >
+                <option value="">{categoryId ? "Select sub issue…" : "Pick an issue first"}</option>
+                {(selectedCategory?.reasons || []).map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {bilingual(r.nameEn, r.nameSi)}
+                  </option>
+                ))}
+              </NativeSelect>
+            </Field>
 
             <Field label="Priority">
               <div
@@ -282,6 +283,10 @@ export function NewTicketDialog({
   )
 }
 
+function bilingual(en: string, si: string) {
+  return en === si ? en : `${en} · ${si}`
+}
+
 function Field({
   label,
   htmlFor,
@@ -293,62 +298,10 @@ function Field({
 }) {
   return (
     <div className="grid gap-1.5 sm:grid-cols-[5.5rem_1fr] sm:gap-3">
-      <Label htmlFor={htmlFor} className="text-muted-foreground self-start text-xs font-medium sm:pt-2">
+      <Label htmlFor={htmlFor} className="text-muted-foreground self-start text-xs font-medium sm:pt-2.5">
         {label}
       </Label>
       <div className="min-w-0">{children}</div>
-    </div>
-  )
-}
-
-function ChipGroup({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-1.5">
-      {children}
-    </div>
-  )
-}
-
-function Chip({
-  selected,
-  onSelect,
-  label,
-  secondary,
-}: {
-  selected: boolean
-  onSelect: () => void
-  label: string
-  secondary?: string
-}) {
-  return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={selected}
-      onClick={onSelect}
-      className={cn(
-        "focus-visible:ring-ring/50 inline-flex min-h-8 max-w-full items-baseline gap-1.5 rounded-lg border px-2.5 py-1.5 text-left text-sm leading-tight transition-colors outline-none focus-visible:ring-3",
-        selected
-          ? "border-foreground bg-foreground text-background"
-          : "hover:bg-muted/70 hover:border-foreground/25"
-      )}
-    >
-      <span className="font-medium">{label}</span>
-      {secondary ? (
-        <span className={cn("text-xs", selected ? "text-background/70" : "text-muted-foreground")}>
-          {secondary}
-        </span>
-      ) : null}
-    </button>
-  )
-}
-
-function ChipSkeleton({ count }: { count: number }) {
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {Array.from({ length: count }).map((_, i) => (
-        <Skeleton key={i} className="h-8 w-24 rounded-lg" />
-      ))}
     </div>
   )
 }
