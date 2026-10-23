@@ -47,10 +47,6 @@ const STATUS_VIEWS = [
   { value: "", label: "All" },
 ]
 
-function defaultStatusFor(tab: InboxTab) {
-  return tab === "queue" ? ACTIVE_STATUS : ""
-}
-
 function isOverdue(t: TicketListItem) {
   if (!t.dueAt) return false
   if (["RESOLVED", "CLOSED", "CANCELLED"].includes(t.status)) return false
@@ -63,7 +59,7 @@ export function InboxView() {
   const qc = useQueryClient()
   const [tab, setTab] = useState<InboxTab>("for-me")
   const [query, setQuery] = useState("")
-  // null means "use the tab's default" (Queue hides closed tickets until asked).
+  // null means "use the default" (Active: everything except Closed/Cancelled).
   const [statusOverride, setStatusOverride] = useState<string | null>(null)
   const [priority, setPriority] = useState("")
   const [departmentId, setDepartmentId] = useState("")
@@ -103,7 +99,7 @@ export function InboxView() {
   }, [selectedCode, sheetOpen])
 
   const scope = TAB_META[tab].scope
-  const status = statusOverride ?? defaultStatusFor(tab)
+  const status = statusOverride ?? ACTIVE_STATUS
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams({ scope })
@@ -149,13 +145,13 @@ export function InboxView() {
   const forMeCount = useQuery({
     queryKey: ["tickets", "assigned", "count"],
     queryFn: async () =>
-      ((await api.get("/api/tickets?scope=assigned")).tickets as TicketListItem[]).length,
+      ((await api.get("/api/tickets?scope=assigned&active=1")).tickets as TicketListItem[]).length,
     staleTime: 30_000,
   })
   const mineCount = useQuery({
     queryKey: ["tickets", "mine", "count"],
     queryFn: async () =>
-      ((await api.get("/api/tickets?scope=mine")).tickets as TicketListItem[]).length,
+      ((await api.get("/api/tickets?scope=mine&active=1")).tickets as TicketListItem[]).length,
     staleTime: 30_000,
   })
   const queueCount = useQuery({
@@ -181,7 +177,7 @@ export function InboxView() {
 
   const overdueCount = useMemo(() => filtered.filter(isOverdue).length, [filtered])
   const hasFilters =
-    status !== defaultStatusFor(tab) ||
+    status !== ACTIVE_STATUS ||
     Boolean(priority || departmentId || query) ||
     overdueOnly ||
     unassignedOnly
@@ -407,12 +403,12 @@ export function InboxView() {
                 tab === "for-me"
                   ? "Nothing assigned to you"
                   : tab === "mine"
-                    ? "You haven’t filed any tickets yet"
+                    ? "No active tickets"
                     : "Queue is clear"
               }
               description={
                 tab === "mine"
-                  ? "Hit New ticket (or press N) to send work to a department."
+                  ? "Hit New ticket (or press N) to send work to a department. Finished tickets are under Closed."
                   : tab === "queue"
                     ? "When your departments get requests, they’ll show up here."
                     : "Claim something from Queue to start."
