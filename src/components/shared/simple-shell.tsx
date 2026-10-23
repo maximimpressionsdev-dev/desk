@@ -35,7 +35,7 @@ const NAV = [
 ]
 
 const navItemClass =
-  "relative inline-flex h-12 shrink-0 items-center gap-2.5 px-4 text-sm font-medium transition-colors after:absolute after:inset-x-4 after:bottom-0 after:h-0.5 after:rounded-full"
+  "relative inline-flex h-12 shrink-0 items-center gap-1.5 px-2.5 text-sm font-medium sm:gap-2.5 sm:px-4 transition-colors after:absolute after:inset-x-4 after:bottom-0 after:h-0.5 after:rounded-full"
 
 export function SimpleShell({
   children,
@@ -64,8 +64,8 @@ export function SimpleShell({
         const count = counts?.[item.id]
         const content = (
           <>
-            <Icon className="size-4" />
-            <span>{item.label}</span>
+            <Icon className="hidden size-4 sm:block" />
+            <span className="whitespace-nowrap">{item.label}</span>
             {typeof count === "number" ? (
               <span
                 className={cn(
@@ -114,7 +114,7 @@ export function SimpleShell({
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          <Settings2 className="size-4" />
+          <Settings2 className="hidden size-4 sm:block" />
           <span>Admin</span>
         </Link>
       ) : null}
@@ -124,7 +124,7 @@ export function SimpleShell({
   return (
     <div className="bg-background flex min-h-svh flex-col">
       <header className="bg-background/95 supports-[backdrop-filter]:bg-background/70 sticky top-0 z-20 border-b backdrop-blur">
-        <div className="mx-auto grid h-16 w-full max-w-7xl grid-cols-[1fr_auto] items-center gap-4 px-4 md:grid-cols-[1fr_auto_1fr] md:px-6">
+        <div className="mx-auto grid h-16 w-full max-w-7xl 2xl:max-w-[1600px] min-[2200px]:max-w-[1920px] grid-cols-[1fr_auto] items-center gap-4 px-4 md:px-6 lg:grid-cols-[1fr_auto_1fr] 2xl:px-8">
           <Link href="/" className="flex shrink-0 items-center gap-2.5 justify-self-start">
             <div className="bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-lg">
               <Ticket className="size-4" />
@@ -132,7 +132,7 @@ export function SimpleShell({
             <span className="hidden text-sm leading-tight font-semibold sm:block">Tickets</span>
           </Link>
 
-          <nav aria-label="Main" className="hidden items-center gap-1 self-stretch md:flex [&>*]:h-full">
+          <nav aria-label="Main" className="hidden items-center gap-1 self-stretch lg:flex [&>*]:h-full">
             {navItems}
           </nav>
 
@@ -191,14 +191,14 @@ export function SimpleShell({
 
         <nav
           aria-label="Main"
-          className="flex overflow-x-auto border-t px-1 [scrollbar-width:none] md:hidden"
+          className="flex overflow-x-auto border-t px-1 [scrollbar-width:none] sm:px-3 md:px-5 lg:hidden"
         >
           {navItems}
         </nav>
       </header>
 
-      <main className="flex-1 px-4 py-5 md:px-6 md:py-6">
-        <div className="mx-auto w-full max-w-7xl">{children}</div>
+      <main className="flex-1 px-4 py-5 md:px-6 md:py-6 2xl:px-8 2xl:py-8">
+        <div className="mx-auto w-full max-w-7xl 2xl:max-w-[1600px] min-[2200px]:max-w-[1920px]">{children}</div>
       </main>
     </div>
   )

@@ -319,7 +319,7 @@ export function TicketDetailSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="data-[side=right]:sm:max-w-xl w-full gap-0 overflow-hidden p-0 sm:max-w-xl"
+        className="gap-0 overflow-hidden p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-xl data-[side=right]:2xl:max-w-2xl"
         showCloseButton
       >
         {!ticket && detailQuery.isLoading ? (

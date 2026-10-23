@@ -271,7 +271,7 @@ export function InboxView() {
         queue: queueCount.data,
       }}
     >
-      <div className="mx-auto w-full max-w-7xl space-y-5 pb-24">
+      <div className="w-full space-y-5 pb-24 2xl:space-y-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="space-y-1">
             <h1 className="text-2xl font-semibold tracking-tight">{TAB_META[tab].title}</h1>
@@ -291,7 +291,7 @@ export function InboxView() {
               )}
             </p>
           </div>
-          <div className="relative w-full sm:w-80">
+          <div className="relative w-full sm:w-80 2xl:w-96">
             <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
             <Input
               className="h-10 pl-9"
@@ -332,10 +332,10 @@ export function InboxView() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap sm:items-center">
             <NativeSelect
               aria-label="Priority"
-              className="h-10 w-auto min-w-[9.5rem] px-3"
+              className="h-10 w-full min-w-0 px-3 sm:w-auto sm:min-w-[9.5rem]"
               value={priority}
               onChange={(e) => setPriority(e.target.value)}
             >
@@ -348,7 +348,7 @@ export function InboxView() {
             </NativeSelect>
             <NativeSelect
               aria-label="Department"
-              className="h-10 w-auto min-w-[11rem] px-3"
+              className="h-10 w-full min-w-0 px-3 sm:w-auto sm:min-w-[11rem]"
               value={departmentId}
               onChange={(e) => setDepartmentId(e.target.value)}
             >
@@ -376,7 +376,7 @@ export function InboxView() {
               />
             ) : null}
             {hasFilters ? (
-              <Button variant="ghost" className="text-muted-foreground h-10" onClick={clearFilters}>
+              <Button variant="ghost" className="text-muted-foreground col-span-2 h-10 sm:col-span-1" onClick={clearFilters}>
                 <X data-icon="inline-start" />
                 Reset
               </Button>
