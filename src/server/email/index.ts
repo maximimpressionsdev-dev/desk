@@ -1,51 +1,84 @@
-import nodemailer from "nodemailer"
+import {
+  joinRecipients,
+  notificationApiKey,
+  notificationBaseUrl,
+  notificationsConfigured,
+} from "@/server/notifications/client"
+import { isDeliverableEmail } from "@/server/email/base-url"
+
+export { appBaseUrl, appBaseUrlFromRequest, isDeliverableEmail } from "@/server/email/base-url"
+
+type Recipient = string | null | undefined
 
 type SendEmailInput = {
-  to: string | string[]
+  to: Recipient | Recipient[]
   subject: string
   html: string
   text?: string
+  cc?: Recipient | Recipient[]
+  bcc?: Recipient | Recipient[]
 }
 
-function getTransport() {
-  const host = process.env.SMTP_HOST
-  if (!host) return null
-  return nodemailer.createTransport({
-    host,
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: false,
-    auth:
-      process.env.SMTP_USER && process.env.SMTP_PASS
-        ? {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS,
-          }
-        : undefined,
-  })
+function deliverableList(values: Recipient | Recipient[]): string[] {
+  return (Array.isArray(values) ? values : [values]).filter(
+    (v): v is string => isDeliverableEmail(v)
+  )
 }
 
 export async function sendEmail(input: SendEmailInput) {
-  const from = process.env.SMTP_FROM || "tickets@company.local"
-  const transport = getTransport()
-  if (!transport) {
+  const to = joinRecipients(deliverableList(input.to))
+  if (!to) {
+    return { queued: false, skipped: true, reason: "no_recipients" as const }
+  }
+
+  if (!notificationsConfigured()) {
     console.info("[email:dev]", {
-      from,
-      to: input.to,
+      to,
+      cc: input.cc ? joinRecipients(deliverableList(input.cc)) : undefined,
+      bcc: input.bcc ? joinRecipients(deliverableList(input.bcc)) : undefined,
       subject: input.subject,
       text: input.text,
+      html: input.html,
     })
     return { queued: false, logged: true }
   }
-  await transport.sendMail({
-    from,
-    to: input.to,
-    subject: input.subject,
-    html: input.html,
-    text: input.text,
-  })
-  return { queued: true, logged: false }
-}
 
-export function appBaseUrl() {
-  return process.env.AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+  const form = new FormData()
+  form.append("pattern", "send_mail")
+  form.append("to", to)
+  form.append("subject", input.subject)
+  form.append("message", input.html || input.text || "")
+
+  const cc = input.cc ? joinRecipients(deliverableList(input.cc)) : ""
+  if (cc) form.append("cc", cc)
+
+  const bcc = input.bcc ? joinRecipients(deliverableList(input.bcc)) : ""
+  if (bcc) form.append("bcc", bcc)
+
+  // Matches Maxim API: https://host//mail/emit
+  const url = `${notificationBaseUrl()}/mail/emit`
+  console.info("[email] sending", { url, to, subject: input.subject })
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "x-key": notificationApiKey(),
+      },
+      body: form,
+      signal: AbortSignal.timeout(12_000),
+    })
+
+    const body = await res.text().catch(() => "")
+    if (!res.ok) {
+      console.error("[email] failed", res.status, body)
+      return { queued: false, error: true, status: res.status }
+    }
+
+    console.info("[email] sent", { status: res.status, body: body.slice(0, 300) })
+    return { queued: true, logged: false, status: res.status }
+  } catch (error) {
+    console.error("[email] failed", error)
+    return { queued: false, error: true }
+  }
 }

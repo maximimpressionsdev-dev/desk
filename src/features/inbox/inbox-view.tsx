@@ -31,7 +31,7 @@ import {
 
 const TAB_META: Record<InboxTab, { title: string; scope: "assigned" | "mine" | "queue" }> = {
   "for-me": { title: "For me", scope: "assigned" },
-  mine: { title: "I requested", scope: "mine" },
+  mine: { title: "My Tickets", scope: "mine" },
   queue: { title: "Queue", scope: "queue" },
 }
 
@@ -117,9 +117,7 @@ export function InboxView() {
     queryKey: ["departments"],
     queryFn: async () => {
       const res = await api.get("/api/departments")
-      return (res.departments as Array<{ id: number; name: string; active: boolean }>).filter(
-        (d) => d.active
-      )
+      return res.departments as Array<{ id: number; name: string; active: boolean }>
     },
   })
 
@@ -396,7 +394,7 @@ export function InboxView() {
               tab === "for-me"
                 ? "Nothing assigned to you"
                 : tab === "mine"
-                  ? "You haven’t requested anything"
+                  ? "You haven’t filed any tickets yet"
                   : "Queue is empty"
             }
             description={

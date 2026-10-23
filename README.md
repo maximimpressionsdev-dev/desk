@@ -16,22 +16,20 @@ Standalone internal ticketing / work-request system for any department.
 # Start Postgres
 docker compose up -d db
 
-# Install & setup schema + admin seed
+# Install & setup schema + seed
 npm install
 npm run db:setup
+npm run db:sync
 
 # Dev server
 npm run dev
 ```
 
-Default admin (from `.env`):
-
-- Email: `admin@company.local`
-- Password: `admin12345`
+Staff sign in with **username/employee number + password/NIC** (synced from Redis). Run `npm run db:sync` to refresh the directory.
 
 ## App surfaces
 
-- **Inbox** (`/`) — For me / I requested / Queue, with filters, overdue badges, bulk claim/close
+- **Inbox** (`/`) — For me / My Tickets / Queue, with filters, overdue badges, bulk claim/close
 - **Ticket sheet** — claim, status, reassign, watch, internal notes, canned replies, links, @mentions
 - **Admin** — invites, departments, membership, ticket types, notify email, canned replies
 
@@ -51,6 +49,25 @@ curl -X POST -H "Authorization: Bearer $CRON_SECRET" \
 
 - `overdue` — emails assignees/requesters for past-due open tickets
 - `digest` — daily summary of open assigned work
+- `sync` — pull employees and departments from Redis
+
+## Redis directory
+
+Desk reads `employees` and `departments` from Redis DB 3 and upserts them into Postgres.
+
+```bash
+npm run db:sync
+```
+
+Staff sign in with company email or employee number (same password hash as Redis). Employees without an email in Redis are stored with a null email.
+
+Set in `.env`:
+
+```
+REDIS_HOST=159.138.98.55
+REDIS_PORT=63792
+REDIS_DB=3
+```
 
 ## Docker (full stack)
 

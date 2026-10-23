@@ -2,18 +2,32 @@
 
 import { Suspense, useState } from "react"
 import { signIn } from "next-auth/react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
 import { Ticket } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ThemeToggle } from "@/components/shared/theme-toggle"
 
+function safeNextPath(raw: string | null) {
+  if (!raw) return "/"
+  try {
+    const path = raw.startsWith("/") && !raw.startsWith("//")
+      ? raw
+      : new URL(raw).pathname + new URL(raw).search
+    if (!path.startsWith("/") || path.startsWith("//") || path.startsWith("/login")) {
+      return "/"
+    }
+    return path
+  } catch {
+    return "/"
+  }
+}
+
 function LoginForm() {
-  const router = useRouter()
   const search = useSearchParams()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -29,11 +43,11 @@ function LoginForm() {
     })
     setLoading(false)
     if (res?.error) {
-      toast.error("Invalid email or password")
+      toast.error("Invalid username, employee number, or password")
       return
     }
-    router.push(search.get("callbackUrl") || "/")
-    router.refresh()
+    // Full navigation so middleware/session cookie are re-read reliably.
+    window.location.assign(safeNextPath(search.get("callbackUrl")))
   }
 
   return (
@@ -43,25 +57,22 @@ function LoginForm() {
           <Ticket className="size-5" />
         </div>
         <CardTitle className="text-xl">Sign in</CardTitle>
-        <CardDescription>
-          Submit and track internal work requests across departments.
-        </CardDescription>
       </CardHeader>
       <CardContent>
         <form className="space-y-4" onSubmit={onSubmit}>
           <div className="space-y-1.5">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">Username or employee number</Label>
             <Input
               id="email"
-              type="email"
-              autoComplete="email"
+              type="text"
+              autoComplete="username"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">Password or ID number</Label>
             <Input
               id="password"
               type="password"
@@ -75,11 +86,19 @@ function LoginForm() {
             {loading ? "Signing in…" : "Sign in"}
           </Button>
         </form>
-        <p className="text-muted-foreground mt-4 text-center text-sm">
-          <Link href="/reset-password" className="hover:text-foreground underline-offset-4 hover:underline">
-            Forgot password?
-          </Link>
-        </p>
+        <div className="text-muted-foreground mt-4 text-center text-xs leading-relaxed">
+          <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+            <Link href="/reset-password" className="hover:text-foreground underline-offset-4 hover:underline">
+              Request password reset help
+            </Link>
+            <span className="text-border" aria-hidden>
+              ·
+            </span>
+            <Link href="/manual" className="hover:text-foreground underline-offset-4 hover:underline">
+              User manual
+            </Link>
+          </p>
+        </div>
       </CardContent>
     </Card>
   )

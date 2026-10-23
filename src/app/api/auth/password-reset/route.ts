@@ -1,80 +1,48 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { and, eq, gt, isNull } from "drizzle-orm"
-import { db } from "@/server/db"
-import { passwordResets, users } from "@/server/db/schema"
-import { createToken, hashPassword, hashToken } from "@/server/auth/password"
-import { appBaseUrl, sendEmail } from "@/server/email"
-import { passwordResetEmailHtml } from "@/server/email/templates"
 import { ApiError, jsonError } from "@/server/auth/guards"
+import { sendEmail } from "@/server/email"
+import { passwordResetSupportEmailHtml } from "@/server/email/templates"
 
 const requestSchema = z.object({
-  email: z.string().email(),
-})
-
-const resetSchema = z.object({
-  token: z.string().min(10),
-  password: z.string().min(8).max(200),
+  employeeNumber: z.string().min(1).max(64),
+  email: z.string().email().optional().or(z.literal("")),
+  phone: z.string().min(7).max(32).optional().or(z.literal("")),
 })
 
 export async function POST(req: Request) {
   try {
-    const url = new URL(req.url)
-    const action = url.searchParams.get("action") || "request"
+    const body = requestSchema.parse(await req.json())
+    const employeeNumber = body.employeeNumber.trim()
+    const email = body.email?.trim() || null
+    const phone = body.phone?.trim() || null
+    const requestedAt = new Date().toISOString()
 
-    if (action === "request") {
-      const body = requestSchema.parse(await req.json())
-      const email = body.email.toLowerCase().trim()
-      const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1)
-      // Always return ok to avoid account enumeration
-      if (user?.active) {
-        const token = createToken()
-        await db.insert(passwordResets).values({
-          userId: user.id,
-          tokenHash: hashToken(token),
-          expiresAt: new Date(Date.now() + 60 * 60 * 1000),
-        })
-        const resetUrl = `${appBaseUrl()}/reset-password/${token}`
-        await sendEmail({
-          to: user.email,
-          subject: "Reset your password",
-          html: passwordResetEmailHtml({ resetUrl }),
-          text: `Reset password: ${resetUrl}`,
-        })
-      }
-      return NextResponse.json({ ok: true })
-    }
+    await sendEmail({
+      to: "tharuka@maximimpressions.com",
+      cc: ["thimira@maximimpressions.com", "oattanayake@maximimpressions.com"],
+      subject: `[Desk] Password reset support · ${employeeNumber}`,
+      html: passwordResetSupportEmailHtml({
+        employeeNumber,
+        email,
+        phone,
+        requestedAt,
+      }),
+      text: [
+        "Password reset support request",
+        `Employee Number: ${employeeNumber}`,
+        `Email: ${email ?? "Not provided"}`,
+        `Phone: ${phone ?? "Not provided"}`,
+        `Requested at: ${requestedAt}`,
+      ].join("\n"),
+    })
 
-    if (action === "reset") {
-      const body = resetSchema.parse(await req.json())
-      const [row] = await db
-        .select()
-        .from(passwordResets)
-        .where(
-          and(
-            eq(passwordResets.tokenHash, hashToken(body.token)),
-            isNull(passwordResets.usedAt),
-            gt(passwordResets.expiresAt, new Date())
-          )
-        )
-        .limit(1)
-      if (!row) throw new ApiError(400, "Reset link is invalid or expired")
-
-      const passwordHash = await hashPassword(body.password)
-      await db
-        .update(users)
-        .set({ passwordHash, updatedAt: new Date() })
-        .where(eq(users.id, row.userId))
-      await db
-        .update(passwordResets)
-        .set({ usedAt: new Date() })
-        .where(eq(passwordResets.id, row.id))
-
-      return NextResponse.json({ ok: true })
-    }
-
-    throw new ApiError(400, "Unknown action")
+    return NextResponse.json({ ok: true })
   } catch (error) {
+    if (error instanceof ApiError) return jsonError(error)
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: "Invalid request" }, { status: 400 })
+    }
     return jsonError(error)
   }
 }

@@ -65,7 +65,7 @@ export function SimpleShell({
 
   const nav = [
     { id: "for-me" as const, label: "For me", icon: ClipboardList, hint: "Assigned to you" },
-    { id: "mine" as const, label: "I requested", icon: Inbox, hint: "Tickets you filed" },
+    { id: "mine" as const, label: "My Tickets", icon: Inbox, hint: "Tickets you filed" },
     { id: "queue" as const, label: "Queue", icon: LayoutList, hint: "Department work" },
   ]
 

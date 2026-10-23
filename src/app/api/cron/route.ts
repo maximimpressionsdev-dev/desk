@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server"
-import { and, eq, isNotNull, lt, sql } from "drizzle-orm"
+import { and, desc, eq, isNotNull, lt, sql } from "drizzle-orm"
 import { db } from "@/server/db"
-import { tickets, users } from "@/server/db/schema"
-import { sendEmail, appBaseUrl } from "@/server/email"
-import { ticketUpdatedEmailHtml } from "@/server/email/templates"
+import { healthLogs, tickets, users } from "@/server/db/schema"
+import { sendEmail } from "@/server/email"
+import { digestEmailHtml, ticketUpdatedEmailHtml } from "@/server/email/templates"
 
 function authorized(req: Request) {
   const secret = process.env.CRON_SECRET
@@ -11,13 +11,42 @@ function authorized(req: Request) {
   return req.headers.get("authorization") === `Bearer ${secret}`
 }
 
-export async function POST(req: Request) {
+async function runCron(req: Request) {
   if (!authorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
   const url = new URL(req.url)
   const job = url.searchParams.get("job") || "overdue"
+
+  if (job === "health") {
+    const [previous] = await db
+      .select({
+        id: healthLogs.id,
+        note: healthLogs.note,
+        createdAt: healthLogs.createdAt,
+      })
+      .from(healthLogs)
+      .orderBy(desc(healthLogs.createdAt))
+      .limit(1)
+
+    const [created] = await db
+      .insert(healthLogs)
+      .values({
+        note: `keepalive ${new Date().toISOString()}`,
+      })
+      .returning()
+
+    await db.execute(sql`DELETE FROM health_logs WHERE created_at < now() - interval '60 days'`)
+
+    return NextResponse.json({
+      job: "health",
+      previous: previous
+        ? { id: previous.id, note: previous.note, createdAt: previous.createdAt }
+        : null,
+      written: { id: created.id, note: created.note, createdAt: created.createdAt },
+    })
+  }
 
   if (job === "overdue") {
     const overdue = await db
@@ -43,19 +72,20 @@ export async function POST(req: Request) {
       const recipients: string[] = []
       if (t.assigneeId) {
         const [a] = await db.select().from(users).where(eq(users.id, t.assigneeId)).limit(1)
-        if (a) recipients.push(a.email)
+        if (a?.email) recipients.push(a.email)
       }
       const [r] = await db.select().from(users).where(eq(users.id, t.requesterId)).limit(1)
-      if (r) recipients.push(r.email)
+      if (r?.email) recipients.push(r.email)
       const unique = [...new Set(recipients)]
       if (!unique.length) continue
       await sendEmail({
         to: unique,
-        subject: `[${t.code}] Overdue`,
+        subject: `[${t.code}] Overdue · ${t.title}`,
         html: ticketUpdatedEmailHtml({
           code: t.code,
           title: t.title,
-          summary: `This ticket is overdue (due ${t.dueAt?.toISOString() || "n/a"}).`,
+          summary: `This ticket is overdue (due ${t.dueAt?.toISOString() || "n/a"}). Please take action or update the due date.`,
+          updateLabel: "Overdue",
         }),
         text: `Overdue: ${t.code} ${t.title}`,
       })
@@ -94,25 +124,42 @@ export async function POST(req: Request) {
     for (const [assigneeId, list] of byAssignee) {
       const [user] = await db.select().from(users).where(eq(users.id, assigneeId)).limit(1)
       if (!user?.active) continue
-      const lines = list
-        .slice(0, 20)
-        .map((t) => `• ${t.code} [${t.priority}] ${t.title} (${t.status})`)
-        .join("<br/>")
       await sendEmail({
         to: user.email,
-        subject: `Your open tickets (${list.length})`,
-        html: `<div style="font-family:Segoe UI,Arial,sans-serif">
-          <p>Hi ${user.name},</p>
-          <p>You have <strong>${list.length}</strong> open ticket(s):</p>
-          <p>${lines}</p>
-          <p><a href="${appBaseUrl()}/?tab=for-me">Open inbox</a></p>
-        </div>`,
-        text: list.map((t) => `${t.code} ${t.title}`).join("\n"),
+        subject: `Your open tickets (${list.length}) · support-desk`,
+        html: digestEmailHtml({
+          name: user.name,
+          tickets: list.map((t) => ({
+            code: t.code,
+            title: t.title,
+            priority: t.priority,
+            status: t.status,
+          })),
+        }),
+        text: list.map((t) => `${t.code} [${t.priority}] ${t.title} (${t.status})`).join("\n"),
       })
       sent++
     }
     return NextResponse.json({ job: "digest", assignees: byAssignee.size, sent })
   }
 
+  if (job === "sync") {
+    const { redisConfigured } = await import("@/server/redis/client")
+    if (!redisConfigured()) {
+      return NextResponse.json({ error: "Redis is not configured" }, { status: 400 })
+    }
+    const { syncDirectoryFromRedis } = await import("@/server/redis/sync")
+    const result = await syncDirectoryFromRedis()
+    return NextResponse.json({ job: "sync", ...result })
+  }
+
   return NextResponse.json({ error: "Unknown job" }, { status: 400 })
+}
+
+export async function GET(req: Request) {
+  return runCron(req)
+}
+
+export async function POST(req: Request) {
+  return runCron(req)
 }

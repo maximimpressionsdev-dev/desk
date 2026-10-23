@@ -86,6 +86,10 @@ export async function notifyWatchers(input: {
   code: string
   title: string
   summary: string
+  status?: string | null
+  priority?: string | null
+  departmentName?: string | null
+  updateLabel?: string | null
   excludeUserIds?: number[]
 }) {
   const watchers = await listWatchers(input.ticketId)
@@ -94,13 +98,17 @@ export async function notifyWatchers(input: {
     .filter((w) => !exclude.has(w.userId))
     .map((w) => w.email)
   if (!emails.length) return
-  void sendEmail({
+  await sendEmail({
     to: emails,
-    subject: `[${input.code}] ${input.summary.slice(0, 60)}`,
+    subject: `[${input.code}] ${input.updateLabel || "Update"} · ${input.title}`.slice(0, 120),
     html: ticketUpdatedEmailHtml({
       code: input.code,
       title: input.title,
       summary: input.summary,
+      status: input.status,
+      priority: input.priority,
+      departmentName: input.departmentName,
+      updateLabel: input.updateLabel,
     }),
     text: input.summary,
   })
@@ -111,20 +119,20 @@ export async function resolveMentions(body: string) {
   const matches = [...body.matchAll(/@([A-Za-z][A-Za-z0-9._ -]{0,60})/g)].map((m) =>
     m[1].trim().replace(/\s+/g, " ")
   )
-  if (!matches.length) return [] as Array<{ id: number; name: string; email: string }>
+  if (!matches.length) return [] as Array<{ id: number; name: string; email: string | null }>
 
   const all = await db
     .select({ id: users.id, name: users.name, email: users.email })
     .from(users)
     .where(eq(users.active, true))
 
-  const found: Array<{ id: number; name: string; email: string }> = []
+  const found: Array<{ id: number; name: string; email: string | null }> = []
   for (const mention of matches) {
     const lower = mention.toLowerCase()
     const user =
       all.find((u) => u.name.toLowerCase() === lower) ||
       all.find((u) => u.name.toLowerCase().startsWith(lower)) ||
-      all.find((u) => u.email.toLowerCase().startsWith(lower))
+      all.find((u) => (u.email || "").toLowerCase().startsWith(lower))
     if (user && !found.some((f) => f.id === user.id)) found.push(user)
   }
   return found
@@ -267,7 +275,8 @@ export async function searchUsers(q: string) {
         eq(users.active, true),
         or(
           sql`lower(${users.name}) like ${`%${term}%`}`,
-          sql`lower(${users.email}) like ${`%${term}%`}`
+          sql`lower(coalesce(${users.email}, '')) like ${`%${term}%`}`,
+          sql`lower(coalesce(${users.employeeNumber}, '')) like ${`%${term}%`}`
         )
       )
     )

@@ -24,7 +24,8 @@ type Department = {
 type UserRow = {
   id: number
   name: string
-  email: string
+  email: string | null
+  employeeNumber?: string | null
   role: "USER" | "ADMIN"
   active: boolean
   departmentIds: number[]
@@ -42,10 +43,27 @@ export default function AdminPage() {
   const [notifyEmail, setNotifyEmail] = useState("")
   const [cannedTitle, setCannedTitle] = useState("")
   const [cannedBody, setCannedBody] = useState("")
+  const [mainEn, setMainEn] = useState("")
+  const [mainSi, setMainSi] = useState("")
+  const [subEn, setSubEn] = useState("")
+  const [subSi, setSubSi] = useState("")
+  const [issueCategoryId, setIssueCategoryId] = useState("")
 
   const departmentsQuery = useQuery({
-    queryKey: ["departments"],
-    queryFn: async () => (await api.get("/api/departments")).departments as Department[],
+    queryKey: ["departments", "admin"],
+    queryFn: async () =>
+      (await api.get("/api/departments?all=1")).departments as Department[],
+  })
+
+  const toggleDeptMutation = useMutation({
+    mutationFn: (dept: Department) =>
+      api.patch("/api/departments", { id: dept.id, active: !dept.active }),
+    onSuccess: async (_data, dept) => {
+      toast.success(dept.active ? "Department deactivated" : "Department activated")
+      await qc.invalidateQueries({ queryKey: ["departments"] })
+      await qc.invalidateQueries({ queryKey: ["departments", "admin"] })
+    },
+    onError: (e: Error) => toast.error(e.message),
   })
 
   const usersQuery = useQuery({
@@ -72,6 +90,19 @@ export default function AdminPage() {
         .cannedReplies as Array<{ id: number; title: string; body: string }>,
   })
 
+  const issuesQuery = useQuery({
+    queryKey: ["issues-admin", selectedDept],
+    enabled: Boolean(selectedDept),
+    queryFn: async () =>
+      (await api.get(`/api/issues?departmentId=${selectedDept}&all=1`)).categories as Array<{
+        id: number
+        nameEn: string
+        nameSi: string
+        active: boolean
+        reasons: Array<{ id: number; nameEn: string; nameSi: string; active: boolean }>
+      }>,
+  })
+
   const inviteMutation = useMutation({
     mutationFn: () =>
       api.post("/api/admin/invites", { email: inviteEmail, name: inviteName || undefined }),
@@ -90,6 +121,7 @@ export default function AdminPage() {
       setDeptCode("")
       setDeptName("")
       await qc.invalidateQueries({ queryKey: ["departments"] })
+      await qc.invalidateQueries({ queryKey: ["departments", "admin"] })
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -131,6 +163,7 @@ export default function AdminPage() {
     onSuccess: async () => {
       toast.success("Notify email saved")
       await qc.invalidateQueries({ queryKey: ["departments"] })
+      await qc.invalidateQueries({ queryKey: ["departments", "admin"] })
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -151,6 +184,55 @@ export default function AdminPage() {
     onError: (e: Error) => toast.error(e.message),
   })
 
+  const syncMutation = useMutation({
+    mutationFn: () => api.post("/api/admin/sync"),
+    onSuccess: async (data) => {
+      toast.success(
+        `Synced ${data.departmentsUpserted} departments and ${data.usersUpserted} employees`
+      )
+      await qc.invalidateQueries({ queryKey: ["departments"] })
+      await qc.invalidateQueries({ queryKey: ["departments", "admin"] })
+      await qc.invalidateQueries({ queryKey: ["admin-users"] })
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+
+  const addMainIssueMutation = useMutation({
+    mutationFn: () =>
+      api.post("/api/issues", {
+        kind: "category",
+        departmentId: Number(selectedDept),
+        nameEn: mainEn,
+        nameSi: mainSi,
+      }),
+    onSuccess: async () => {
+      toast.success("Main issue added")
+      setMainEn("")
+      setMainSi("")
+      await qc.invalidateQueries({ queryKey: ["issues-admin", selectedDept] })
+      await qc.invalidateQueries({ queryKey: ["issues"] })
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+
+  const addSubIssueMutation = useMutation({
+    mutationFn: () =>
+      api.post("/api/issues", {
+        kind: "reason",
+        categoryId: Number(issueCategoryId),
+        nameEn: subEn,
+        nameSi: subSi,
+      }),
+    onSuccess: async () => {
+      toast.success("Sub issue added")
+      setSubEn("")
+      setSubSi("")
+      await qc.invalidateQueries({ queryKey: ["issues-admin", selectedDept] })
+      await qc.invalidateQueries({ queryKey: ["issues"] })
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+
   return (
     <SimpleShell title="Admin">
     <div className="flex flex-col gap-6">
@@ -160,6 +242,27 @@ export default function AdminPage() {
           Users, departments, membership, and ticket types.
         </p>
       </div>
+
+      <Card className="border-border/50 bg-card/40">
+        <CardHeader className="border-b">
+          <CardTitle>Company directory</CardTitle>
+          <CardDescription>
+            Pull departments and employees from Redis. Staff can then sign in with company email
+            or employee number. Users without an email in Redis are stored with an empty email.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap items-center gap-3 pt-4">
+          <Button disabled={syncMutation.isPending} onClick={() => syncMutation.mutate()}>
+            {syncMutation.isPending ? "Syncing…" : "Sync from Redis"}
+          </Button>
+          {syncMutation.data ? (
+            <p className="text-muted-foreground text-sm">
+              {syncMutation.data.departmentsUpserted} departments ·{" "}
+              {syncMutation.data.usersUpserted} people · {syncMutation.data.skipped} skipped
+            </p>
+          ) : null}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="border-border/50 bg-card/40">
@@ -211,6 +314,56 @@ export default function AdminPage() {
 
       <Card className="border-border/50 bg-card/40">
         <CardHeader className="border-b">
+          <CardTitle>Departments</CardTitle>
+          <CardDescription>
+            Deactivate departments you do not use for tickets. Inactive departments stay in the
+            database but are hidden from new ticket forms. Redis sync will not reactivate them.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-4">
+          {departmentsQuery.isLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead className="text-muted-foreground text-[11px] tracking-wider uppercase">
+                  <tr>
+                    <th className="py-2 pr-4 font-medium">Code</th>
+                    <th className="py-2 pr-4 font-medium">Name</th>
+                    <th className="py-2 pr-4 font-medium">Active</th>
+                    <th className="py-2 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(departmentsQuery.data || []).map((d) => (
+                    <tr key={d.id} className="border-border/40 border-t">
+                      <td className="py-3 pr-4 font-mono text-xs">{d.code}</td>
+                      <td className="py-3 pr-4 font-medium">{d.name}</td>
+                      <td className="py-3 pr-4">{d.active ? "Yes" : "No"}</td>
+                      <td className="py-3">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={toggleDeptMutation.isPending}
+                          onClick={() => toggleDeptMutation.mutate(d)}
+                        >
+                          {d.active ? "Deactivate" : "Activate"}
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/50 bg-card/40">
+        <CardHeader className="border-b">
           <CardTitle>Department membership & types</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 pt-4">
@@ -230,7 +383,7 @@ export default function AdminPage() {
               <option value="">Select</option>
               {(departmentsQuery.data || []).map((d) => (
                 <option key={d.id} value={d.id}>
-                  {d.name} ({d.code})
+                  {d.name} ({d.code}){d.active ? "" : " — inactive"}
                 </option>
               ))}
             </NativeSelect>
@@ -247,7 +400,7 @@ export default function AdminPage() {
                   <option value="">Select user</option>
                   {(usersQuery.data || []).map((u) => (
                     <option key={u.id} value={u.id}>
-                      {u.name} ({u.email})
+                      {u.name} ({u.email || u.employeeNumber || "no email"})
                     </option>
                   ))}
                 </NativeSelect>
@@ -295,6 +448,84 @@ export default function AdminPage() {
                 <p className="text-muted-foreground text-xs">
                   New tickets to this department are emailed here (optional).
                 </p>
+              </div>
+              <div className="space-y-3 md:col-span-2">
+                <Label>Issue catalog (Sinhala + English)</Label>
+                <p className="text-muted-foreground text-xs">
+                  Users pick a main issue then a sub issue instead of typing a title.
+                </p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <Input
+                    placeholder="Main issue (English)"
+                    value={mainEn}
+                    onChange={(e) => setMainEn(e.target.value)}
+                  />
+                  <Input
+                    placeholder="ප්‍රධාන ගැටලුව (සිංහල)"
+                    value={mainSi}
+                    onChange={(e) => setMainSi(e.target.value)}
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  disabled={!mainEn.trim() || !mainSi.trim() || addMainIssueMutation.isPending}
+                  onClick={() => addMainIssueMutation.mutate()}
+                >
+                  Add main issue
+                </Button>
+                <div className="space-y-2">
+                  <NativeSelect
+                    value={issueCategoryId}
+                    onChange={(e) => setIssueCategoryId(e.target.value)}
+                  >
+                    <option value="">Select main issue for sub issue</option>
+                    {(issuesQuery.data || []).map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nameEn} · {c.nameSi}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <Input
+                      placeholder="Sub issue (English)"
+                      value={subEn}
+                      onChange={(e) => setSubEn(e.target.value)}
+                    />
+                    <Input
+                      placeholder="උප ගැටලුව (සිංහල)"
+                      value={subSi}
+                      onChange={(e) => setSubSi(e.target.value)}
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    disabled={
+                      !issueCategoryId ||
+                      !subEn.trim() ||
+                      !subSi.trim() ||
+                      addSubIssueMutation.isPending
+                    }
+                    onClick={() => addSubIssueMutation.mutate()}
+                  >
+                    Add sub issue
+                  </Button>
+                </div>
+                <ul className="space-y-2 text-sm">
+                  {(issuesQuery.data || []).map((c) => (
+                    <li key={c.id} className="rounded-md border px-3 py-2">
+                      <p className="font-medium">
+                        {c.nameEn} · {c.nameSi}
+                      </p>
+                      <ul className="text-muted-foreground mt-1 space-y-0.5 text-xs">
+                        {c.reasons.map((r) => (
+                          <li key={r.id}>
+                            {r.nameEn} · {r.nameSi}
+                          </li>
+                        ))}
+                      </ul>
+                    </li>
+                  ))}
+                </ul>
               </div>
               <div className="space-y-2 md:col-span-2">
                 <Label>Canned replies</Label>
@@ -377,7 +608,7 @@ export default function AdminPage() {
                   {(usersQuery.data || []).map((u) => (
                     <tr key={u.id} className="border-border/40 border-t">
                       <td className="py-3 pr-4 font-medium">{u.name}</td>
-                      <td className="text-muted-foreground py-3 pr-4">{u.email}</td>
+                      <td className="text-muted-foreground py-3 pr-4">{u.email || "—"}</td>
                       <td className="py-3 pr-4">{u.role}</td>
                       <td className="py-3 pr-4">{u.active ? "Yes" : "No"}</td>
                       <td className="py-3">

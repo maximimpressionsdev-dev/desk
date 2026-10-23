@@ -2,9 +2,9 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { getToken } from "next-auth/jwt"
 
-const publicPaths = ["/login", "/invite", "/reset-password", "/api/auth", "/api/cron"]
+const publicPaths = ["/login", "/invite", "/reset-password", "/manual", "/api/auth", "/api/cron"]
 
-export async function proxy(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
   const isPublic = publicPaths.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`)
@@ -18,9 +18,17 @@ export async function proxy(req: NextRequest) {
     return NextResponse.next()
   }
 
+  // Auth.js sets `__Secure-authjs.session-token` on HTTPS. getToken defaults
+  // secureCookie=false and looks for the wrong cookie name/salt, which makes
+  // post-login redirects bounce straight back to /login in production.
+  const isHttps =
+    req.nextUrl.protocol === "https:" ||
+    req.headers.get("x-forwarded-proto") === "https"
+
   const token = await getToken({
     req,
-    secret: process.env.AUTH_SECRET,
+    secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "nextauth_secret_key",
+    secureCookie: isHttps,
   })
 
   if (!token && !isPublic) {
@@ -36,6 +44,7 @@ export async function proxy(req: NextRequest) {
   if (token && pathname === "/login") {
     const url = req.nextUrl.clone()
     url.pathname = "/"
+    url.search = ""
     return NextResponse.redirect(url)
   }
 
