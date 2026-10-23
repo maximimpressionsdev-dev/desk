@@ -18,6 +18,7 @@ export type TicketListItem = {
   requesterName: string
   assigneeName: string | null
   dueAt: string | null
+  resolvedAt?: string | null
   updatedAt: string
 }
 
@@ -77,7 +78,7 @@ export function TicketList({
           </div>
           <p className="text-muted-foreground hidden truncate text-sm md:block">{t.departmentName}</p>
           <div className="hidden md:block">
-            <StatusBadge status={t.status} />
+            <StatusBadge status={t.status} resolvedAt={t.resolvedAt} />
           </div>
           <div className="hidden md:block">
             <PriorityBadge priority={t.priority} />

@@ -117,6 +117,7 @@ export async function listTicketsForUser(opts: {
   status?: TicketStatus
   priority?: string
   overdue?: boolean
+  active?: boolean
 }) {
   const conditions = []
 
@@ -131,18 +132,20 @@ export async function listTicketsForUser(opts: {
         if (!agent) throw new ApiError(403, "Not a member of this department")
       }
       conditions.push(eq(tickets.departmentId, opts.departmentId))
-    } else if (!opts.isAdmin) {
+    } else {
+      // Default queue is the user's own departments; admins without memberships see everything.
       const memberships = await db
         .select({ departmentId: departmentMembers.departmentId })
         .from(departmentMembers)
         .where(eq(departmentMembers.userId, opts.userId))
       const ids = memberships.map((m) => m.departmentId)
-      if (ids.length === 0) return []
-      conditions.push(inArray(tickets.departmentId, ids))
+      if (ids.length) conditions.push(inArray(tickets.departmentId, ids))
+      else if (!opts.isAdmin) return []
     }
   }
 
   if (opts.status) conditions.push(eq(tickets.status, opts.status))
+  if (opts.active) conditions.push(sql`${tickets.status} not in ('CLOSED','CANCELLED')`)
   if (opts.priority) conditions.push(eq(tickets.priority, opts.priority as "LOW" | "MEDIUM" | "HIGH" | "URGENT"))
   if (opts.overdue) {
     conditions.push(
@@ -169,6 +172,8 @@ export async function listTicketsForUser(opts: {
       requesterName: users.name,
       assigneeId: tickets.assigneeId,
       dueAt: tickets.dueAt,
+      resolvedAt: tickets.resolvedAt,
+      closedAt: tickets.closedAt,
       createdAt: tickets.createdAt,
       updatedAt: tickets.updatedAt,
     })
@@ -410,6 +415,7 @@ export async function updateTicketStatus(input: {
     holdReason: input.status === "ON_HOLD" ? input.holdReason!.trim() : null,
   }
   if (input.status === "RESOLVED") patch.resolvedAt = new Date()
+  else if (input.status !== "CLOSED") patch.resolvedAt = null
   if (input.status === "CLOSED") patch.closedAt = new Date()
 
   const [updated] = await db

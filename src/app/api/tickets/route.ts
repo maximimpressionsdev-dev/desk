@@ -16,6 +16,7 @@ export async function GET(req: Request) {
     const status = params.get("status") as TicketStatus | null
     const priority = params.get("priority") || undefined
     const overdue = params.get("overdue") === "1"
+    const active = params.get("active") === "1"
 
     if (status && !TICKET_STATUSES.includes(status)) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 })
@@ -29,6 +30,7 @@ export async function GET(req: Request) {
       status: status ?? undefined,
       priority,
       overdue,
+      active,
     })
     return NextResponse.json({ tickets })
   } catch (error) {

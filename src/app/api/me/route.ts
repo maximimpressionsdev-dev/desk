@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/server/auth"
 import { db } from "@/server/db"
-import { users } from "@/server/db/schema"
+import { departmentMembers, users } from "@/server/db/schema"
 import { eq } from "drizzle-orm"
 
 export async function GET() {
@@ -20,5 +20,11 @@ export async function GET() {
     .from(users)
     .where(eq(users.id, Number(session.user.id)))
     .limit(1)
-  return NextResponse.json({ user })
+  const memberships = await db
+    .select({ departmentId: departmentMembers.departmentId })
+    .from(departmentMembers)
+    .where(eq(departmentMembers.userId, Number(session.user.id)))
+  return NextResponse.json({
+    user: user ? { ...user, departmentIds: memberships.map((m) => m.departmentId) } : null,
+  })
 }

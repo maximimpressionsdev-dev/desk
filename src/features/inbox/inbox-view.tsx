@@ -35,6 +35,13 @@ const TAB_META: Record<InboxTab, { title: string; scope: "assigned" | "mine" | "
   queue: { title: "Queue", scope: "queue" },
 }
 
+// Pseudo-status: everything except CLOSED and CANCELLED.
+const ACTIVE_STATUS = "ACTIVE"
+
+function defaultStatusFor(tab: InboxTab) {
+  return tab === "queue" ? ACTIVE_STATUS : ""
+}
+
 function isOverdue(t: TicketListItem) {
   if (!t.dueAt) return false
   if (["RESOLVED", "CLOSED", "CANCELLED"].includes(t.status)) return false
@@ -47,7 +54,8 @@ export function InboxView() {
   const qc = useQueryClient()
   const [tab, setTab] = useState<InboxTab>("for-me")
   const [query, setQuery] = useState("")
-  const [status, setStatus] = useState("")
+  // null means "use the tab's default" (Queue hides closed tickets until asked).
+  const [statusOverride, setStatusOverride] = useState<string | null>(null)
   const [priority, setPriority] = useState("")
   const [departmentId, setDepartmentId] = useState("")
   const [overdueOnly, setOverdueOnly] = useState(false)
@@ -85,10 +93,12 @@ export function InboxView() {
   }, [selectedCode, sheetOpen])
 
   const scope = TAB_META[tab].scope
+  const status = statusOverride ?? defaultStatusFor(tab)
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams({ scope })
-    if (status) params.set("status", status)
+    if (status === ACTIVE_STATUS) params.set("active", "1")
+    else if (status) params.set("status", status)
     if (priority) params.set("priority", priority)
     if (departmentId) params.set("departmentId", departmentId)
     if (overdueOnly) params.set("overdue", "1")
@@ -113,6 +123,21 @@ export function InboxView() {
     },
   })
 
+  const meQuery = useQuery({
+    queryKey: ["me"],
+    queryFn: async () =>
+      (await api.get("/api/me")).user as { role: string; departmentIds: number[] } | null,
+    staleTime: 5 * 60_000,
+  })
+
+  const myDepartmentIds = meQuery.data?.departmentIds ?? []
+  const departmentOptions = useMemo(() => {
+    const all = departmentsQuery.data || []
+    // Non-admins can only browse their own departments' queues.
+    if (tab !== "queue" || meQuery.data?.role === "ADMIN") return all
+    return all.filter((d) => myDepartmentIds.includes(d.id))
+  }, [departmentsQuery.data, tab, meQuery.data?.role, myDepartmentIds])
+
   const forMeCount = useQuery({
     queryKey: ["tickets", "assigned", "count"],
     queryFn: async () =>
@@ -128,7 +153,7 @@ export function InboxView() {
   const queueCount = useQuery({
     queryKey: ["tickets", "queue", "count"],
     queryFn: async () =>
-      ((await api.get("/api/tickets?scope=queue")).tickets as TicketListItem[]).length,
+      ((await api.get("/api/tickets?scope=queue&active=1")).tickets as TicketListItem[]).length,
     staleTime: 30_000,
   })
 
@@ -182,6 +207,8 @@ export function InboxView() {
   function changeTab(next: InboxTab) {
     setTab(next)
     setQuery("")
+    setStatusOverride(null)
+    setDepartmentId("")
     setSelected(new Set())
     router.replace(
       selectedCode ? `/?t=${selectedCode}&tab=${next}` : `/?tab=${next}`,
@@ -257,7 +284,8 @@ export function InboxView() {
               <Label className="text-muted-foreground text-[10px] uppercase tracking-wider">
                 Status
               </Label>
-              <NativeSelect value={status} onChange={(e) => setStatus(e.target.value)}>
+              <NativeSelect value={status} onChange={(e) => setStatusOverride(e.target.value)}>
+                <option value={ACTIVE_STATUS}>Active (not closed)</option>
                 <option value="">All</option>
                 {TICKET_STATUSES.map((s) => (
                   <option key={s} value={s}>
@@ -287,8 +315,10 @@ export function InboxView() {
                 value={departmentId}
                 onChange={(e) => setDepartmentId(e.target.value)}
               >
-                <option value="">All</option>
-                {(departmentsQuery.data || []).map((d) => (
+                <option value="">
+                  {tab === "queue" && myDepartmentIds.length ? "My departments" : "All"}
+                </option>
+                {departmentOptions.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name}
                   </option>
@@ -307,12 +337,12 @@ export function InboxView() {
               </label>
             </div>
             <div className="flex items-end justify-end gap-2">
-              {(status || priority || departmentId || overdueOnly) && (
+              {(status !== defaultStatusFor(tab) || priority || departmentId || overdueOnly) && (
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={() => {
-                    setStatus("")
+                    setStatusOverride(null)
                     setPriority("")
                     setDepartmentId("")
                     setOverdueOnly(false)
@@ -450,7 +480,7 @@ export function InboxView() {
                               {t.title}
                             </p>
                             <div className="mt-1 flex flex-wrap gap-1.5 md:hidden">
-                              <StatusBadge status={t.status} />
+                              <StatusBadge status={t.status} resolvedAt={t.resolvedAt} />
                               <PriorityBadge priority={t.priority} />
                             </div>
                           </TableCell>
@@ -458,7 +488,7 @@ export function InboxView() {
                             {t.departmentName}
                           </TableCell>
                           <TableCell className="hidden md:table-cell">
-                            <StatusBadge status={t.status} />
+                            <StatusBadge status={t.status} resolvedAt={t.resolvedAt} />
                           </TableCell>
                           <TableCell className="hidden lg:table-cell">
                             <PriorityBadge priority={t.priority} />

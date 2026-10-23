@@ -100,6 +100,8 @@ export function TicketDetailSheet({
         assigneeName: string | null
         ticketTypeName: string | null
         dueAt: string | null
+        resolvedAt: string | null
+        closedAt: string | null
         createdAt: string
       }
     | undefined
@@ -292,7 +294,7 @@ export function TicketDetailSheet({
                 <span className="bg-muted rounded-md px-2 py-0.5 font-mono text-[11px] font-semibold tracking-wide">
                   {ticket.code}
                 </span>
-                <StatusBadge status={ticket.status} />
+                <StatusBadge status={ticket.status} resolvedAt={ticket.resolvedAt} />
                 <PriorityBadge priority={ticket.priority} />
                 <Button
                   size="sm"
@@ -331,6 +333,12 @@ export function TicketDetailSheet({
                 {ticket.dueAt ? <Meta label="Due" value={formatDateTime(ticket.dueAt)} /> : null}
                 {ticket.holdReason ? (
                   <Meta label="Hold reason" value={ticket.holdReason} />
+                ) : null}
+                {ticket.resolvedAt ? (
+                  <Meta label="Resolved" value={formatDateTime(ticket.resolvedAt)} />
+                ) : null}
+                {ticket.closedAt ? (
+                  <Meta label="Closed" value={formatDateTime(ticket.closedAt)} />
                 ) : null}
               </div>
 

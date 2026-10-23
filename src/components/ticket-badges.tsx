@@ -28,8 +28,16 @@ const priorityClass: Record<TicketPriority, string> = {
   URGENT: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-300 dark:border-rose-800/40",
 }
 
-export function StatusBadge({ status }: { status: string }) {
+export function StatusBadge({
+  status,
+  resolvedAt,
+}: {
+  status: string
+  resolvedAt?: string | null
+}) {
   const key = status as TicketStatus
+  const label =
+    key === "CLOSED" && resolvedAt ? "Resolved · Closed" : STATUS_LABELS[key] || status
   return (
     <span
       className={cn(
@@ -37,7 +45,7 @@ export function StatusBadge({ status }: { status: string }) {
         statusClass[key] || "bg-muted/40 text-muted-foreground border-border/50"
       )}
     >
-      {STATUS_LABELS[key] || status}
+      {label}
     </span>
   )
 }
