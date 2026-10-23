@@ -76,9 +76,9 @@ export const TOUR_FLOWS: Array<{
         titleEn: "Start a new ticket",
         titleSi: "නව ටිකට් එකක් ආරම්භ කරන්න",
         bodyEn:
-          "From the inbox, click New ticket in the sidebar or top bar. On desktop you can also press N on your keyboard.",
+          "Click New ticket in the top bar (top right). On desktop you can also press N on your keyboard.",
         bodySi:
-          "Inbox එකෙන් sidebar එකේ හෝ ඉහළ bar එකේ New ticket තෝරන්න. Desktop පරිගණකයකදී යතුරුපුවරුවේ N යතුර එබීමෙන්ද නව ටිකට් එකක් ආරම්භ කළ හැක.",
+          "ඉහළ bar එකේ (දකුණු පස) ඇති New ticket තෝරන්න. Desktop පරිගණකයකදී යතුරුපුවරුවේ N යතුර එබීමෙන්ද නව ටිකට් එකක් ආරම්භ කළ හැක.",
       },
       {
         id: "3",
@@ -87,9 +87,9 @@ export const TOUR_FLOWS: Array<{
         titleEn: "Fill in the ticket form",
         titleSi: "ටිකට් පෝරමය පුරවන්න",
         bodyEn:
-          "Choose department, main issue, and sub issue (English and Sinhala labels). Add optional notes and priority, then press Create.",
+          "Pick the Department, Issue and Sub issue from the dropdowns (English and Sinhala). If an issue has only one sub issue it is filled in for you. Choose a priority, add optional notes, then press Create ticket (or Ctrl + Enter). The department team gets an SMS right away.",
         bodySi:
-          "අදාළ දෙපාර්තමේන්තුව, ප්‍රධාන ගැටලුව සහ උප ගැටලුව තෝරන්න. අවශ්‍ය නම් අමතර සටහන් සහ ප්‍රමුඛතාවද එක් කරන්න. ඉන්පසු Create ඔබන්න.",
+          "Dropdown මගින් Department, Issue සහ Sub issue තෝරන්න (ඉංග්‍රීසි සහ සිංහල). Issue එකකට ඇත්තේ එක් Sub issue එකක් පමණක් නම් එය ස්වයංක්‍රීයව තේරේ. ප්‍රමුඛතාව (Priority) තෝරා, අවශ්‍ය නම් සටහන් එක් කර Create ticket ඔබන්න (නැතහොත් Ctrl + Enter). දෙපාර්තමේන්තු කණ්ඩායමට වහාම SMS එකක් ලැබේ.",
       },
       {
         id: "4",
@@ -98,9 +98,9 @@ export const TOUR_FLOWS: Array<{
         titleEn: "Track under My Tickets",
         titleSi: "My Tickets යටතේ ඔබගේ ටිකට් අනුගමනය කරන්න",
         bodyEn:
-          "Open My Tickets in the sidebar to see every ticket you filed. The table shows code, status, priority, and assignee.",
+          "Open My Tickets in the top bar. Active tickets show by default — use the Resolved, Closed or All tabs to see finished ones. Each row shows the title, code, status, priority, assignee and when it was last updated.",
         bodySi:
-          "ඔබ විසින් ඉදිරිපත් කළ සියලුම ටිකට් බැලීමට sidebar එකේ My Tickets තෝරන්න. එහි ඇති වගුවෙන් ටිකට් අංකය (code), තත්ත්වය (status), ප්‍රමුඛතාව (priority) සහ පැවරී ඇති නියෝජිතයා (assignee) බැලිය හැක.",
+          "ඉහළ bar එකේ My Tickets තෝරන්න. පෙරනිමියෙන් ක්‍රියාත්මක (Active) ටිකට් පමණක් පෙන්වයි — අවසන් වූ ටිකට් බැලීමට Resolved, Closed හෝ All tab තෝරන්න. සෑම පේළියකම මාතෘකාව, ටිකට් අංකය, තත්ත්වය, ප්‍රමුඛතාව, පැවරී ඇති නියෝජිතයා සහ අවසන් යාවත්කාලීන වේලාව පෙන්වයි.",
       },
       {
         id: "5",
@@ -109,9 +109,9 @@ export const TOUR_FLOWS: Array<{
         titleEn: "Open a ticket for details",
         titleSi: "විස්තර බැලීමට ටිකට් එක විවෘත කරන්න",
         bodyEn:
-          "Click a row to open the ticket sheet. Read progress updates, comments, and status changes from your department.",
+          "Click a row to open the ticket. The Conversation reads like a chat — your messages on the right, the team's on the left, status changes in between. Reply in the box at the bottom; type @name to notify someone.",
         bodySi:
-          "අදාළ පේළිය තෝරා ටිකට් විස්තර විවෘත කරන්න. ඔබගේ දෙපාර්තමේන්තුවෙන් ලබා දී ඇති ප්‍රගති යාවත්කාලීන, අදහස් සහ තත්ත්වයේ වෙනස්කම් එහිදී බැලිය හැක.",
+          "පේළිය තෝරා ටිකට් එක විවෘත කරන්න. Conversation කොටස chat එකක් මෙන් පෙන්වයි — ඔබගේ පණිවිඩ දකුණු පස, කණ්ඩායමේ පණිවිඩ වම් පස, තත්ත්ව වෙනස්කම් ඒ අතර. පහළ ඇති කොටුවේ පිළිතුරු ලියන්න; කෙනෙකුට දැනුම් දීමට @නම ලෙස ටයිප් කරන්න.",
       },
       {
         id: "6",
@@ -149,9 +149,9 @@ export const TOUR_FLOWS: Array<{
         titleEn: "Open the department queue",
         titleSi: "දෙපාර්තමේන්තු Queue එක විවෘත කරන්න",
         bodyEn:
-          "Queue lists new and unassigned tickets for your departments. Use filters for status, priority, or department.",
+          "Queue (top bar) shows active tickets for your departments. Use the status tabs, Priority and Department filters, and the Overdue or Unassigned buttons to narrow it down. You also get an SMS when a new ticket arrives.",
         bodySi:
-          "Queue එකෙන් ඔබට අදාළ දෙපාර්තමේන්තුවල නව සහ තවමත් නියෝජිතයෙකුට පවරා නොමැති ටිකට් බැලිය හැක. අවශ්‍ය ටිකට් ඉක්මනින් සොයා ගැනීමට status, priority හෝ department අනුව filters භාවිතා කරන්න.",
+          "ඉහළ bar එකේ Queue මගින් ඔබගේ දෙපාර්තමේන්තුවල ක්‍රියාත්මක ටිකට් පෙන්වයි. Status tabs, Priority සහ Department filters, සහ Overdue හෝ Unassigned බොත්තම් භාවිතා කර ටිකට් ඉක්මනින් සොයා ගන්න. නව ටිකට් එකක් ලැබුණු විට ඔබට SMS එකක්ද ලැබේ.",
       },
       {
         id: "3",
@@ -160,9 +160,9 @@ export const TOUR_FLOWS: Array<{
         titleEn: "Check For me",
         titleSi: "For me පරීක්ෂා කරන්න",
         bodyEn:
-          "For me shows tickets already assigned to you. Switch between Queue and For me from the sidebar views.",
+          "For me shows tickets assigned to you. Switch between For me, My Tickets and Queue using the tabs in the top bar — the numbers show how many active tickets each has.",
         bodySi:
-          "For me මගින් දැනටමත් ඔබට පවරා ඇති ටිකට් බැලිය හැක. Sidebar එකේ ඇති views භාවිතා කර Queue සහ For me අතර මාරු වන්න.",
+          "For me මගින් ඔබට පවරා ඇති ටිකට් පෙන්වයි. ඉහළ bar එකේ tabs භාවිතා කර For me, My Tickets සහ Queue අතර මාරු වන්න — එක් එක් tab එකේ ඇති අංකයෙන් ක්‍රියාත්මක ටිකට් ගණන පෙන්වයි.",
       },
       {
         id: "4",
@@ -171,20 +171,20 @@ export const TOUR_FLOWS: Array<{
         titleEn: "Claim or assign",
         titleSi: "ටිකට් භාරගන්න හෝ පවරන්න",
         bodyEn:
-          "Open a ticket from the queue and press Claim, or reassign it to another agent in the Reassign dropdown.",
+          "Press Claim on the queue row, or open the ticket and press Claim next to Owner. To give it to someone else, pick them in the Owner dropdown.",
         bodySi:
-          "Queue එකෙන් ටිකට් එකක් විවෘත කර Claim ඔබා එය ඔබ වෙත භාරගන්න. එසේ නොමැති නම් Reassign dropdown එක භාවිතා කර ටිකට් එක වෙනත් නියෝජිතයෙකුට පවරන්න.",
+          "Queue පේළියේ ඇති Claim ඔබන්න, නැතහොත් ටිකට් එක විවෘත කර Owner අසල ඇති Claim ඔබන්න. වෙනත් නියෝජිතයෙකුට පැවරීමට Owner dropdown එකෙන් ඔවුන් තෝරන්න.",
       },
       {
         id: "5",
         scene: "ticket-progress",
         highlights: ["status-field"],
-        titleEn: "Set status to In progress",
-        titleSi: "තත්ත්වය In progress ලෙස සකසන්න",
+        titleEn: "Press Start work",
+        titleSi: "Start work ඔබන්න",
         bodyEn:
-          "When you start working, tap In progress under Actions so the requester sees that work has begun.",
+          "When you begin, press Start work. The highlighted button is always the usual next step. The requester is emailed about each status change.",
         bodySi:
-          "ටිකට් එක සම්බන්ධයෙන් වැඩ ආරම්භ කළ පසු Actions යටතේ ඇති In progress තෝරන්න. එවිට වැඩ කටයුතු ආරම්භ කර ඇති බව ඉල්ලුම්කරුට දැනගත හැක.",
+          "වැඩ ආරම්භ කරන විට Start work ඔබන්න. උද්දීපනය කළ (තද පැහැති) බොත්තම සැමවිටම සාමාන්‍ය ඊළඟ පියවරයි. සෑම තත්ත්ව වෙනසක් ගැනම ඉල්ලුම්කරුට email මගින් දැනුම් දෙනු ලැබේ.",
       },
       {
         id: "6",
@@ -193,9 +193,9 @@ export const TOUR_FLOWS: Array<{
         titleEn: "Post a progress update",
         titleSi: "ප්‍රගති යාවත්කාලීනයක් එක් කරන්න",
         bodyEn:
-          "Write a public progress update in the comment box and post it. Use internal notes for team-only messages.",
+          "Type in the box at the bottom of the ticket and press Post update (or Ctrl + Enter). Tick Internal note for team-only messages — they show in purple. Type @name to notify someone by email, or SMS if they have no email.",
         bodySi:
-          "Comment box එකේ ඉල්ලුම්කරුට දැකිය හැකි ප්‍රගති යාවත්කාලීනයක් ලියා Post කරන්න. කණ්ඩායමේ සාමාජිකයන්ට පමණක් දැකිය යුතු පණිවිඩ සඳහා Internal notes භාවිතා කරන්න.",
+          "ටිකට් එකේ පහළ ඇති කොටුවේ ලියා Post update ඔබන්න (නැතහොත් Ctrl + Enter). කණ්ඩායමට පමණක් දැකිය යුතු පණිවිඩ සඳහා Internal note සලකුණු කරන්න — ඒවා දම් පැහැයෙන් පෙන්වයි. කෙනෙකුට email මගින් (email නොමැති නම් SMS මගින්) දැනුම් දීමට @නම ලෙස ටයිප් කරන්න.",
       },
       {
         id: "7",
@@ -204,9 +204,9 @@ export const TOUR_FLOWS: Array<{
         titleEn: "Put on hold if blocked",
         titleSi: "වැඩ කටයුතු අවහිර වී ඇත්නම් On hold කරන්න",
         bodyEn:
-          "Waiting on parts, access, or another team? Set On hold and enter a clear reason the requester can understand.",
+          "Waiting on parts, access, or another team? Press Put on hold and enter a clear reason. The requester is emailed the reason, and the ticket owner is emailed if someone else put it on hold.",
         bodySi:
-          "අමතර කොටස්, ප්‍රවේශ අවසර හෝ වෙනත් කණ්ඩායමක සහාය බලාපොරොත්තු වන්නේ නම්, ටිකට් එක On hold ලෙස සකසන්න. එසේ කරන විට ඉල්ලුම්කරුට පහසුවෙන් තේරුම් ගත හැකි පැහැදිලි හේතුවක් සඳහන් කරන්න.",
+          "අමතර කොටස්, ප්‍රවේශ අවසර හෝ වෙනත් කණ්ඩායමක සහාය බලාපොරොත්තු වන්නේ නම් Put on hold ඔබා පැහැදිලි හේතුවක් ඇතුළත් කරන්න. ඉල්ලුම්කරුට එම හේතුව email මගින් ලැබේ; වෙනත් අයෙකු On hold කළහොත් ටිකට් එකේ Owner හටද email එකක් ලැබේ.",
       },
       {
         id: "8",
@@ -215,9 +215,9 @@ export const TOUR_FLOWS: Array<{
         titleEn: "Resolve the ticket",
         titleSi: "ටිකට් එක විසඳන්න",
         bodyEn:
-          "When the job is done, set status to Resolved. The requester is notified by email and SMS automatically.",
+          "When the job is done, press Resolve. The requester is notified by email and SMS automatically. If it turns out not to be fixed, press Reopen.",
         bodySi:
-          "වැඩ කටයුතු සම්පූර්ණ වූ පසු ටිකට් එකේ status එක Resolved ලෙස සකසන්න. එවිට ඉල්ලුම්කරුට email සහ SMS මගින් ස්වයංක්‍රීයව දැනුම්දීමක් ලැබේ.",
+          "වැඩ කටයුතු සම්පූර්ණ වූ පසු Resolve ඔබන්න. ඉල්ලුම්කරුට email සහ SMS මගින් ස්වයංක්‍රීයව දැනුම් දෙනු ලැබේ. ගැටලුව තවමත් විසඳී නොමැති නම් Reopen ඔබන්න.",
       },
       {
         id: "9",
@@ -226,9 +226,9 @@ export const TOUR_FLOWS: Array<{
         titleEn: "Close to finish",
         titleSi: "අවසන් කිරීමට Close කරන්න",
         bodyEn:
-          "After confirmation or when no further action is needed, move the ticket to Closed to complete the lifecycle.",
+          "Once the requester confirms, or no further action is needed, press Close ticket. It shows as Resolved · Closed and moves out of the Active lists (find it under Closed).",
         bodySi:
-          "ඉල්ලුම්කරුගෙන් තහවුරු කිරීම ලැබුණු පසු හෝ තවදුරටත් ක්‍රියාමාර්ගයක් අවශ්‍ය නොවන විට, ටිකට් එක Closed ලෙස සකසන්න. එමගින් ටිකට් එකේ ක්‍රියාවලිය සම්පූර්ණ වේ.",
+          "ඉල්ලුම්කරු තහවුරු කළ පසු හෝ තවදුරටත් ක්‍රියාමාර්ගයක් අවශ්‍ය නොවන විට Close ticket ඔබන්න. එය Resolved · Closed ලෙස පෙන්වන අතර Active ලැයිස්තුවෙන් ඉවත් වේ (Closed tab යටතේ සොයාගත හැක).",
       },
     ],
   },

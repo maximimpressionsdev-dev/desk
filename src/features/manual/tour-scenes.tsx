@@ -1,12 +1,8 @@
 "use client"
 
-import {
-  Bell,
-  Search,
-  UserPlus,
-} from "lucide-react"
+import { AlarmClock, Ban, Bell, CheckCheck, CircleCheck, Pause, Play, Search, Send, Ticket, UserPlus, UserX } from "lucide-react"
 import { StatusBadge, PriorityBadge, statusDot } from "@/components/ticket-badges"
-import { STATUS_LABELS } from "@/lib/ticket-constants"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -21,7 +17,6 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
-import { Ticket } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { TourHighlight, TourSceneId } from "@/features/manual/tour-content"
 import {
@@ -37,8 +32,10 @@ const SAMPLE_TICKET = {
   status: "IN_PROGRESS",
   priority: "MEDIUM",
   assignee: "Kamal Silva",
-  updated: "2h ago",
+  updated: "2 hr. ago",
 }
+
+const STATUS_TABS = ["Active", "Open", "In progress", "On hold", "Resolved", "Closed", "All"]
 
 function MockTicketTable({
   tab,
@@ -49,156 +46,174 @@ function MockTicketTable({
   highlightRow?: boolean
   showClaim?: boolean
 }) {
+  const unassigned = tab === "queue" && showClaim
   return (
-    <Card className="border-border/50 bg-card/40 overflow-hidden py-0">
-      <CardContent className="p-0">
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="w-10">
-                <input type="checkbox" className="accent-foreground size-4" readOnly />
-              </TableHead>
-              <TableHead className="w-[7rem]">Code</TableHead>
-              <TableHead>Title</TableHead>
-              <TableHead className="hidden sm:table-cell">Department</TableHead>
-              <TableHead className="hidden md:table-cell">Status</TableHead>
-              <TableHead className="hidden lg:table-cell">Priority</TableHead>
-              <TableHead className="hidden md:table-cell">Assignee</TableHead>
-              {showClaim ? <TableHead className="w-[5.5rem]" /> : null}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow
-              className={cn(
-                "bg-muted/50 hover:bg-muted/50",
-                tourHl(Boolean(highlightRow))
+    <div className="border-border/60 bg-card overflow-hidden rounded-xl border">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-muted/30 hover:bg-muted/30">
+            <TableHead className="w-10 pl-4">
+              <input type="checkbox" className="accent-foreground size-4" readOnly />
+            </TableHead>
+            <TableHead>Ticket</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="hidden lg:table-cell">Priority</TableHead>
+            <TableHead className="hidden md:table-cell">Assignee</TableHead>
+            <TableHead className="hidden lg:table-cell">Updated</TableHead>
+            {showClaim ? <TableHead className="w-[5.5rem]" /> : null}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow className={cn("bg-muted/40 hover:bg-muted/40", tourHl(Boolean(highlightRow)))}>
+            <TableCell className="pl-4">
+              <input type="checkbox" className="accent-foreground size-4" readOnly />
+            </TableCell>
+            <TableCell className="py-2.5">
+              <p className="font-medium">{SAMPLE_TICKET.title}</p>
+              <div className="text-muted-foreground mt-0.5 flex items-center gap-1.5 text-xs">
+                <span className={cn("size-1.5 rounded-full", statusDot(unassigned ? "OPEN" : SAMPLE_TICKET.status))} />
+                <span className="font-mono">{SAMPLE_TICKET.code}</span>
+                <span>·</span>
+                <span>{SAMPLE_TICKET.department}</span>
+              </div>
+            </TableCell>
+            <TableCell>
+              <StatusBadge status={unassigned ? "OPEN" : SAMPLE_TICKET.status} />
+            </TableCell>
+            <TableCell className="hidden lg:table-cell">
+              <PriorityBadge priority={SAMPLE_TICKET.priority} />
+            </TableCell>
+            <TableCell className="hidden md:table-cell">
+              {unassigned ? (
+                <span className="text-muted-foreground text-sm">Unassigned</span>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Avatar size="sm">
+                    <AvatarFallback className="text-[10px]">KS</AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm">{SAMPLE_TICKET.assignee}</span>
+                </div>
               )}
-            >
-              <TableCell>
-                <input type="checkbox" className="accent-foreground size-4" readOnly />
+            </TableCell>
+            <TableCell className="text-muted-foreground hidden text-xs lg:table-cell">
+              {SAMPLE_TICKET.updated}
+            </TableCell>
+            {showClaim ? (
+              <TableCell className="pr-4 text-right">
+                <Button size="sm" variant="outline">
+                  Claim
+                </Button>
               </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <span
-                    className={cn("size-1.5 shrink-0 rounded-full", statusDot(SAMPLE_TICKET.status))}
-                  />
-                  <span className="font-mono text-[11px] font-medium">{SAMPLE_TICKET.code}</span>
-                </div>
-              </TableCell>
-              <TableCell>
-                <p className="max-w-[20rem] truncate font-medium">{SAMPLE_TICKET.title}</p>
-              </TableCell>
-              <TableCell className="text-muted-foreground hidden sm:table-cell">
-                {SAMPLE_TICKET.department}
-              </TableCell>
-              <TableCell className="hidden md:table-cell">
-                <StatusBadge status={SAMPLE_TICKET.status} />
-              </TableCell>
-              <TableCell className="hidden lg:table-cell">
-                <PriorityBadge priority={SAMPLE_TICKET.priority} />
-              </TableCell>
-              <TableCell className="text-muted-foreground hidden md:table-cell">
-                {tab === "queue" && showClaim ? "—" : SAMPLE_TICKET.assignee}
-              </TableCell>
-              {showClaim ? (
-                <TableCell className="text-right">
-                  <Button size="sm" variant="secondary" className="pointer-events-none">
-                    Claim
-                  </Button>
-                </TableCell>
-              ) : null}
-            </TableRow>
-            <TableRow className="opacity-50">
-              <TableCell>
-                <input type="checkbox" className="accent-foreground size-4" readOnly />
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <span className={cn("size-1.5 shrink-0 rounded-full", statusDot("OPEN"))} />
-                  <span className="font-mono text-[11px] font-medium">TKT-00038</span>
-                </div>
-              </TableCell>
-              <TableCell>
-                <p className="truncate font-medium">Printer jam — Reception</p>
-              </TableCell>
-              <TableCell className="text-muted-foreground hidden sm:table-cell">Maintenance</TableCell>
-              <TableCell className="hidden md:table-cell">
-                <StatusBadge status="OPEN" />
-              </TableCell>
-              <TableCell className="hidden lg:table-cell">
-                <PriorityBadge priority="LOW" />
-              </TableCell>
-              <TableCell className="text-muted-foreground hidden md:table-cell">—</TableCell>
-              {showClaim ? <TableCell /> : null}
-            </TableRow>
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+            ) : null}
+          </TableRow>
+          <TableRow className="opacity-50">
+            <TableCell className="pl-4">
+              <input type="checkbox" className="accent-foreground size-4" readOnly />
+            </TableCell>
+            <TableCell className="py-2.5">
+              <p className="font-medium">Printer jam — Reception</p>
+              <div className="text-muted-foreground mt-0.5 flex items-center gap-1.5 text-xs">
+                <span className={cn("size-1.5 rounded-full", statusDot("OPEN"))} />
+                <span className="font-mono">TKT-00038</span>
+                <span>·</span>
+                <span>Maintenance</span>
+              </div>
+            </TableCell>
+            <TableCell>
+              <StatusBadge status="OPEN" />
+            </TableCell>
+            <TableCell className="hidden lg:table-cell">
+              <PriorityBadge priority="LOW" />
+            </TableCell>
+            <TableCell className="text-muted-foreground hidden text-sm md:table-cell">Unassigned</TableCell>
+            <TableCell className="text-muted-foreground hidden text-xs lg:table-cell">yesterday</TableCell>
+            {showClaim ? <TableCell /> : null}
+          </TableRow>
+        </TableBody>
+      </Table>
+    </div>
+  )
+}
+
+function DialogRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="grid gap-1.5 sm:grid-cols-[6.5rem_1fr] sm:gap-3">
+      <Label className="text-muted-foreground self-start text-sm font-medium sm:pt-2.5">{label}</Label>
+      <div className="min-w-0">{children}</div>
+    </div>
   )
 }
 
 function NewTicketDialogMock({ highlights }: { highlights: TourHighlight[] }) {
   return (
-    <div className="bg-background/80 absolute inset-0 z-30 flex items-start justify-center overflow-y-auto p-4 pt-10 backdrop-blur-[1px]">
+    <div className="bg-background/80 absolute inset-0 z-30 flex items-start justify-center overflow-y-auto p-4 pt-8 backdrop-blur-[1px]">
       <div
         className={cn(
-          "bg-popover text-popover-foreground ring-foreground/10 w-full max-w-lg rounded-xl p-4 text-sm ring-1 shadow-lg",
+          "bg-popover text-popover-foreground ring-foreground/10 w-full max-w-2xl overflow-hidden rounded-xl text-sm ring-1 shadow-lg",
           tourHl(highlights.includes("ticket-form"))
         )}
       >
-          <div className="mb-3 space-y-1">
-            <p className="text-base font-medium">New ticket</p>
-            <p className="text-muted-foreground text-sm">
-              Pick department, main issue, and sub issue. Extra notes are optional.
-            </p>
-          </div>
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label>Department</Label>
-              <NativeSelect className="h-10 pointer-events-none" value="it" disabled>
-                <option value="it">Information Technology</option>
-              </NativeSelect>
+        <div className="space-y-1 border-b px-6 py-5">
+          <p className="text-base font-semibold">New ticket</p>
+          <p className="text-muted-foreground text-xs">
+            Pick where it goes and what&apos;s wrong — that&apos;s all we need.
+          </p>
+        </div>
+        <div className="space-y-5 px-6 py-5">
+          <DialogRow label="Department">
+            <NativeSelect className="h-10" value="it" disabled>
+              <option value="it">Information Technology</option>
+            </NativeSelect>
+          </DialogRow>
+          <DialogRow label="Issue">
+            <NativeSelect className="h-10" value="net" disabled>
+              <option value="net">Network · ජාලය</option>
+            </NativeSelect>
+          </DialogRow>
+          <DialogRow label="Sub issue">
+            <NativeSelect className="h-10" value="wifi" disabled>
+              <option value="wifi">Wi-Fi not working · Wi-Fi ක්‍රියා නොකරයි</option>
+            </NativeSelect>
+          </DialogRow>
+          <DialogRow label="Priority">
+            <div className="bg-muted/60 inline-grid grid-cols-4 gap-0.5 rounded-lg p-0.5">
+              {[
+                ["Low", "bg-muted-foreground/50"],
+                ["Medium", "bg-sky-500"],
+                ["High", "bg-orange-500"],
+                ["Urgent", "bg-rose-500"],
+              ].map(([label, dot]) => (
+                <span
+                  key={label}
+                  className={cn(
+                    "flex items-center justify-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium sm:text-sm",
+                    label === "Medium" ? "bg-background shadow-sm" : "text-muted-foreground"
+                  )}
+                >
+                  <span className={cn("size-1.5 rounded-full", dot)} />
+                  {label}
+                </span>
+              ))}
             </div>
-            <div className="space-y-1.5">
-              <Label>Main issue</Label>
-              <NativeSelect className="h-10 pointer-events-none" value="net" disabled>
-                <option value="net">Network · ජාලය</option>
-              </NativeSelect>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Sub issue</Label>
-              <NativeSelect className="h-10 pointer-events-none" value="wifi" disabled>
-                <option value="wifi">Wi-Fi not working · Wi-Fi නොවැඩේ</option>
-              </NativeSelect>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Extra notes (optional)</Label>
-              <Textarea
-                className="pointer-events-none resize-none"
-                readOnly
-                value="Floor 2 printer room — cannot connect to Wi-Fi"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Priority</Label>
-              <NativeSelect className="h-10 pointer-events-none" value="MEDIUM" disabled>
-                <option value="MEDIUM">MEDIUM</option>
-              </NativeSelect>
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="outline" className="pointer-events-none">
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                className={cn("pointer-events-none", tourHl(highlights.includes("create-btn")))}
-              >
-                Create
-              </Button>
-            </div>
+          </DialogRow>
+          <DialogRow label="Notes">
+            <Textarea className="min-h-20 resize-none" readOnly value="Floor 2 printer room — cannot connect" />
+          </DialogRow>
+        </div>
+        <div className="bg-muted/50 flex items-center justify-between gap-2 border-t px-6 py-4">
+          <p className="text-muted-foreground hidden truncate text-xs sm:block">
+            Information Technology › Network › Wi-Fi not working
+          </p>
+          <div className="flex gap-2">
+            <Button type="button" variant="ghost">
+              Cancel
+            </Button>
+            <Button type="button" className={tourHl(highlights.includes("create-btn"))}>
+              Create ticket
+            </Button>
           </div>
         </div>
+      </div>
     </div>
   )
 }
@@ -217,55 +232,56 @@ function InboxMain({
   return (
     <TourMockShell
       activeTab={tab}
-      title={title}
       highlights={highlights}
       overlay={showDialog ? <NewTicketDialogMock highlights={highlights} /> : undefined}
     >
-      <div className="space-y-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
-            <p className="text-muted-foreground text-sm">2 tickets</p>
+      <div className="space-y-5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+            <p className="text-muted-foreground text-sm">
+              2 tickets <span className="text-rose-600">· 1 overdue</span>
+            </p>
           </div>
-          <div className="flex w-full items-center gap-2 sm:max-w-md">
-            <div className="relative min-w-0 flex-1">
-              <Search className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
-              <Input className="h-10 pl-8 pointer-events-none" placeholder="Search…" readOnly />
-            </div>
-            <Button
-              size="lg"
-              className={cn(
-                "hidden h-10 shrink-0 gap-2 shadow-sm md:inline-flex pointer-events-none",
-                tourHl(highlights.includes("new-ticket-btn"))
-              )}
-            >
-              New ticket
-            </Button>
+          <div className="relative w-full sm:w-72">
+            <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+            <Input className="h-10 pl-9" placeholder="Search code, title, person…" readOnly />
           </div>
         </div>
 
-        <Card className="border-border/50 bg-card/40 py-0">
-          <CardContent className="grid gap-3 p-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="space-y-1">
-              <Label className="text-muted-foreground text-[10px] uppercase tracking-wider">Status</Label>
-              <NativeSelect className="pointer-events-none" value="" disabled>
-                <option value="">All</option>
-              </NativeSelect>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-muted-foreground text-[10px] uppercase tracking-wider">Priority</Label>
-              <NativeSelect className="pointer-events-none" value="" disabled>
-                <option value="">All</option>
-              </NativeSelect>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-muted-foreground text-[10px] uppercase tracking-wider">Department</Label>
-              <NativeSelect className="pointer-events-none" value="" disabled>
-                <option value="">All</option>
-              </NativeSelect>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="space-y-3">
+          <div className="bg-muted/60 inline-flex max-w-full gap-1 overflow-hidden rounded-xl p-1">
+            {STATUS_TABS.map((t) => (
+              <span
+                key={t}
+                className={cn(
+                  "rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap",
+                  t === "Active" ? "bg-background shadow-sm" : "text-muted-foreground"
+                )}
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <NativeSelect className="h-9 w-auto min-w-[8rem]" value="" disabled>
+              <option value="">Any priority</option>
+            </NativeSelect>
+            <NativeSelect className="h-9 w-auto min-w-[10rem]" value="" disabled>
+              <option value="">{tab === "queue" ? "My departments" : "All departments"}</option>
+            </NativeSelect>
+            <Button variant="outline" className="h-9 gap-2">
+              <AlarmClock />
+              Overdue
+            </Button>
+            {tab === "queue" ? (
+              <Button variant="outline" className="h-9 gap-2">
+                <UserX />
+                Unassigned
+              </Button>
+            ) : null}
+          </div>
+        </div>
 
         <MockTicketTable
           tab={tab}
@@ -279,33 +295,29 @@ function InboxMain({
 
 function LoginScene(_props: { highlights: TourHighlight[] }) {
   return (
-    <div className="bg-background relative flex min-h-[480px] items-center justify-center px-4">
+    <div className="bg-background relative flex min-h-[600px] items-center justify-center px-4">
       <Card className="border-border/50 bg-card/40 w-full max-w-md shadow-none ring-1 ring-foreground/10">
         <CardHeader>
           <div className="bg-foreground text-background mb-3 flex size-10 items-center justify-center rounded-lg">
             <Ticket className="size-5" />
           </div>
           <CardTitle className="text-xl">Sign in</CardTitle>
-          <CardDescription>
-            Staff sign in with company credentials from Orbit (username or employee number + Orbit
-            password or NIC).
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label>Username or employee number</Label>
-              <Input className="pointer-events-none" readOnly value="EMP-1042" />
+              <Input readOnly value="EMP-1042" />
             </div>
             <div className="space-y-1.5">
               <Label>Password or ID number</Label>
-              <Input className="pointer-events-none" readOnly type="password" value="password" />
+              <Input readOnly type="password" value="password" />
             </div>
-            <Button className="w-full pointer-events-none">Sign in</Button>
+            <Button className="w-full">Sign in</Button>
           </div>
-          <div className="text-muted-foreground mt-4 text-center text-xs leading-relaxed">
-            <p>Locked out? Use Orbit password or NIC, or request IT reset help.</p>
-          </div>
+          <p className="text-muted-foreground mt-4 text-center text-xs">
+            Request password reset help · User manual
+          </p>
         </CardContent>
       </Card>
     </div>
@@ -314,31 +326,82 @@ function LoginScene(_props: { highlights: TourHighlight[] }) {
 
 function ResetHelpScene({ highlights }: { highlights: TourHighlight[] }) {
   return (
-    <div className="bg-background flex min-h-[480px] items-center justify-center px-4">
+    <div className="bg-background flex min-h-[600px] items-center justify-center px-4">
       <Card
         className={cn(
           "border-border/50 bg-card/40 w-full max-w-md ring-1 ring-foreground/10",
           tourHl(highlights.includes("reset-help"))
         )}
       >
-          <CardHeader>
-            <CardTitle className="text-xl">Request password reset help</CardTitle>
-            <CardDescription>
-              Enter your employee number. IT team will contact you immediately.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Employee Number</Label>
-              <Input className="pointer-events-none" readOnly value="EMP-1042" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Email (optional)</Label>
-              <Input className="pointer-events-none" readOnly value="you@company.com" />
-            </div>
-            <Button className="w-full pointer-events-none">Send request to IT</Button>
-          </CardContent>
-        </Card>
+        <CardHeader>
+          <CardTitle className="text-xl">Request password reset help</CardTitle>
+          <CardDescription>
+            Enter your employee number. IT team will contact you immediately.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>Employee Number</Label>
+            <Input readOnly value="EMP-1042" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Email (optional)</Label>
+            <Input readOnly value="you@company.com" />
+          </div>
+          <Button className="w-full">Send request to IT</Button>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+type SheetMode = "claim" | "progress" | "comment" | "hold" | "resolve" | "close" | "view"
+
+// Status buttons as the app shows them for each moment in the tour.
+const SHEET_ACTIONS: Partial<Record<SheetMode, Array<{ label: string; icon: React.ElementType; primary?: boolean }>>> = {
+  claim: [{ label: "Start work", icon: Play, primary: true }, { label: "Put on hold", icon: Pause }],
+  progress: [{ label: "Start work", icon: Play, primary: true }, { label: "Put on hold", icon: Pause }],
+  comment: [{ label: "Put on hold", icon: Pause }, { label: "Resolve", icon: CircleCheck, primary: true }],
+  hold: [{ label: "Put on hold", icon: Pause, primary: true }, { label: "Resolve", icon: CircleCheck }],
+  resolve: [{ label: "Put on hold", icon: Pause }, { label: "Resolve", icon: CircleCheck, primary: true }],
+  close: [{ label: "Close ticket", icon: CheckCheck, primary: true }, { label: "Reopen", icon: Play }],
+}
+
+function Bubble({ who, mine, internal, text }: { who: string; mine?: boolean; internal?: boolean; text: string }) {
+  return (
+    <div className={cn("flex items-end gap-2", mine && "flex-row-reverse")}>
+      {!mine ? (
+        <Avatar size="sm">
+          <AvatarFallback className="text-[10px]">
+            {who
+              .split(" ")
+              .map((p) => p[0])
+              .join("")}
+          </AvatarFallback>
+        </Avatar>
+      ) : null}
+      <div className={cn("flex max-w-[80%] flex-col gap-1", mine && "items-end")}>
+        <p className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
+          <span className="text-foreground/80 font-medium">{mine ? "You" : who}</span>
+          {internal ? (
+            <span className="rounded bg-violet-100 px-1 text-[10px] font-medium text-violet-700">Internal</span>
+          ) : null}
+          2h
+        </p>
+        <div
+          className={cn(
+            "rounded-2xl px-3 py-2 text-sm leading-snug",
+            internal
+              ? "bg-violet-50 ring-1 ring-violet-200"
+              : mine
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted",
+            mine ? "rounded-br-md" : "rounded-bl-md"
+          )}
+        >
+          {text}
+        </div>
+      </div>
     </div>
   )
 }
@@ -350,8 +413,13 @@ function TicketSheetPanel({
 }: {
   highlights: TourHighlight[]
   status: string
-  mode: "claim" | "progress" | "comment" | "hold" | "resolve" | "close" | "view"
+  mode: SheetMode
 }) {
+  const actions = SHEET_ACTIONS[mode]
+  const statusHl =
+    highlights.includes("status-field") ||
+    highlights.includes("resolve-btn") ||
+    highlights.includes("close-btn")
   return (
     <div className="border-border bg-background absolute inset-y-0 right-0 z-20 flex w-full flex-col border-l shadow-xl sm:max-w-lg">
       <div className="shrink-0 space-y-3 border-b p-5 pr-12 text-left">
@@ -359,15 +427,14 @@ function TicketSheetPanel({
           <span className="bg-muted rounded-md px-2 py-0.5 font-mono text-[11px] font-semibold tracking-wide">
             {SAMPLE_TICKET.code}
           </span>
-          <StatusBadge status={status} />
+          <StatusBadge status={status} resolvedAt={status === "CLOSED" ? "x" : null} />
           <PriorityBadge priority={SAMPLE_TICKET.priority} />
-          <Button size="sm" variant="ghost" className="ml-auto h-7 pointer-events-none">
+          <Button size="sm" variant="ghost" className="ml-auto h-7">
             <Bell data-icon="inline-start" />
             Watch
           </Button>
         </div>
         <p className="text-lg leading-snug font-semibold">{SAMPLE_TICKET.title}</p>
-        <p className="text-foreground/80 text-sm">Floor 2 printer room — cannot connect to Wi-Fi</p>
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-xl border bg-muted/30 p-3 text-xs">
           <div>
             <p className="text-muted-foreground">Department</p>
@@ -381,121 +448,103 @@ function TicketSheetPanel({
             <p className="text-muted-foreground">Owner</p>
             <p className="font-medium">{mode === "claim" ? "Unassigned" : "Kamal Silva"}</p>
           </div>
+          {mode === "hold" ? (
+            <div>
+              <p className="text-muted-foreground">Hold reason</p>
+              <p className="font-medium">Waiting for switch delivery</p>
+            </div>
+          ) : null}
         </div>
       </div>
 
-      <div className="shrink-0 space-y-3 border-b bg-background p-4">
-        {mode !== "view" ? (
-          <>
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-muted-foreground text-[11px] font-medium tracking-wider uppercase">Actions</p>
+      {mode !== "view" ? (
+        <div className="shrink-0 space-y-3 border-b p-4">
+          {actions ? (
+            <div className={cn("flex flex-wrap items-center gap-1.5 rounded-md p-1", tourHl(statusHl))}>
+              {actions.map((a) => {
+                const Icon = a.icon
+                return (
+                  <Button key={a.label} size="sm" variant={a.primary ? "default" : "outline"} className="h-8">
+                    <Icon data-icon="inline-start" />
+                    {a.label}
+                  </Button>
+                )
+              })}
+              {mode !== "close" ? (
+                <Button size="sm" variant="ghost" className="text-muted-foreground ml-auto h-8">
+                  <Ban data-icon="inline-start" />
+                  Cancel ticket
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
+
+          {mode === "hold" ? (
+            <Textarea
+              className={cn("min-h-16 resize-none", tourHl(highlights.includes("hold-reason")))}
+              readOnly
+              value="Waiting for network switch delivery — expected Friday."
+            />
+          ) : null}
+
+          {mode !== "close" ? (
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground w-12 shrink-0 text-xs">Owner</span>
+              <NativeSelect className="h-8" value="" disabled>
+                <option value="">{mode === "claim" ? "Unassigned" : "Kamal Silva"}</option>
+              </NativeSelect>
               {mode === "claim" ? (
-                <Button
-                  size="sm"
-                  className={cn("pointer-events-none", tourHl(highlights.includes("claim-btn")))}
-                >
+                <Button size="sm" variant="outline" className={cn("h-8 shrink-0", tourHl(highlights.includes("claim-btn")))}>
                   <UserPlus data-icon="inline-start" />
                   Claim
                 </Button>
               ) : null}
             </div>
+          ) : null}
 
-            {(mode === "progress" || mode === "hold" || mode === "resolve" || mode === "close") && (
-              <div
-                className={cn(
-                  "flex flex-wrap gap-1.5 rounded-md p-1",
-                  tourHl(
-                    highlights.includes("status-field") ||
-                      highlights.includes("resolve-btn") ||
-                      highlights.includes("close-btn")
-                  )
-                )}
-              >
-                {(mode === "progress"
-                  ? (["IN_PROGRESS", "ON_HOLD", "RESOLVED"] as const)
-                  : mode === "hold"
-                    ? (["IN_PROGRESS", "ON_HOLD", "RESOLVED"] as const)
-                    : (["RESOLVED", "CLOSED"] as const)
-                ).map((s) => (
-                  <Button
-                    key={s}
-                    size="sm"
-                    variant={s === status ? "default" : "outline"}
-                    className="pointer-events-none h-8"
-                  >
-                    {STATUS_LABELS[s] || s}
-                  </Button>
-                ))}
-              </div>
-            )}
+          {mode === "resolve" && highlights.includes("notifications") ? (
+            <p className={cn("text-muted-foreground flex items-center gap-2 rounded-md p-2 text-xs", tourHl(true))}>
+              <Bell className="size-3.5" />
+              Requester notified by email + SMS
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
-            {mode === "hold" ? (
-              <Textarea
-                className={cn(
-                  "min-h-16 resize-none pointer-events-none",
-                  tourHl(highlights.includes("hold-reason"))
-                )}
-                readOnly
-                value="Waiting for network switch delivery — expected Friday."
-                placeholder="Why is this on hold?"
-              />
-            ) : null}
-
-            {mode === "comment" ? (
-              <Textarea
-                className={cn(
-                  "min-h-[72px] resize-none pointer-events-none",
-                  tourHl(highlights.includes("comment-box"))
-                )}
-                readOnly
-                value="Checked access point — rebooting router now."
-                placeholder="Progress update… @mention to notify"
-              />
-            ) : null}
-
-            {mode === "resolve" && highlights.includes("notifications") ? (
-              <div className={cn("text-muted-foreground space-y-1.5 rounded-md p-2 text-xs", tourHl(true))}>
-                <p className="flex items-center gap-2">
-                  <Bell className="size-3.5" />
-                  Requester notified by email + SMS
-                </p>
-              </div>
-            ) : null}
-          </>
+      <div className={cn("flex-1 space-y-3 overflow-hidden p-4", tourHl(highlights.includes("timeline")))}>
+        <p className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">Conversation</p>
+        <Bubble who="Jane Perera" text="Wi-Fi keeps dropping in the printer room since morning." />
+        <p className="text-muted-foreground flex items-center gap-2 text-[11px]">
+          <span className="bg-border h-px flex-1" />
+          Kamal Silva · Status changed to IN_PROGRESS
+          <span className="bg-border h-px flex-1" />
+        </p>
+        <Bubble who="Kamal Silva" mine={mode !== "view"} text="Checked the access point — rebooting the router now." />
+        {mode === "comment" ? (
+          <Bubble who="Kamal Silva" mine internal text="Router firmware is old, schedule an update." />
         ) : null}
       </div>
 
-      {mode === "view" ? (
-        <div className="flex-1 overflow-auto p-4">
-          <div
-            className={cn(
-              "space-y-3 rounded-md p-2",
-              tourHl(highlights.includes("timeline"))
-            )}
-          >
-            <p className="text-muted-foreground text-[11px] font-medium tracking-wider uppercase">
-              Timeline
-            </p>
-            <div className="rounded-lg border bg-muted/20 p-3 text-sm">
-              <p className="font-medium">Kamal Silva</p>
-              <p className="text-muted-foreground mt-1 text-xs">2 hours ago · Progress</p>
-              <p className="mt-2">Checked access point — rebooting router now.</p>
-            </div>
-            <div className="rounded-lg border p-3 text-sm opacity-70">
-              <p className="font-medium">System</p>
-              <p className="text-muted-foreground mt-1 text-xs">Yesterday · Status</p>
-              <p className="mt-2">Status changed to In progress</p>
-            </div>
-          </div>
-          <div className="mt-4">
-            <Textarea
-              className="min-h-[64px] resize-none pointer-events-none"
-              readOnly
-              placeholder="Write a comment… @name to mention"
-            />
-          </div>
+      <div className={cn("shrink-0 space-y-2 border-t p-3", tourHl(highlights.includes("comment-box")))}>
+        <Textarea
+          className="min-h-[56px] resize-none"
+          readOnly
+          value={mode === "comment" ? "Router restarted, please try again @Jane Perera" : ""}
+          placeholder={mode === "view" ? "Write a comment… @name to mention" : "Progress update… @mention to notify"}
+        />
+        <div className="flex items-center gap-2">
+          {mode !== "view" ? (
+            <label className="flex items-center gap-1.5 text-xs">
+              <input type="checkbox" className="accent-foreground size-3.5" readOnly />
+              Internal note
+            </label>
+          ) : null}
+          <Button size="sm" className="ml-auto">
+            <Send data-icon="inline-start" />
+            {mode === "view" ? "Comment" : "Post update"}
+          </Button>
         </div>
-      ) : null}
+      </div>
     </div>
   )
 }
@@ -509,10 +558,10 @@ function TicketScene({
   tab: MockInboxTab
   highlights: TourHighlight[]
   status: string
-  mode: "claim" | "progress" | "comment" | "hold" | "resolve" | "close" | "view"
+  mode: SheetMode
 }) {
   return (
-    <div className="relative min-h-[480px] overflow-hidden">
+    <div className="relative min-h-[600px] overflow-hidden">
       <div className="opacity-40">
         <InboxMain tab={tab} title={tab === "queue" ? "Queue" : "For me"} highlights={[]} />
       </div>

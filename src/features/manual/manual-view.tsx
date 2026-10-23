@@ -25,7 +25,7 @@ export function ManualView() {
             <p className="truncate text-sm font-semibold tracking-tight">support-desk පරිශීලක අත්පොත</p>
             <p className="text-muted-foreground truncate text-[11px]">User manual · Interactive tour</p>
           </div>
-          <Button size="sm" variant="outline" render={<Link href="/login" />}>
+          <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/login" />}>
             <ArrowLeft className="size-3.5" />
             Sign in
           </Button>
