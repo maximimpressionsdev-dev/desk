@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
 import { toast } from "sonner"
@@ -26,8 +26,9 @@ import {
   isTerminalStatus,
   type TicketStatus,
 } from "@/lib/ticket-constants"
-import { cn, formatDateTime } from "@/lib/utils"
+import { cn, formatDateTime, initials } from "@/lib/utils"
 import { PriorityBadge, StatusBadge } from "@/components/ticket-badges"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
@@ -87,6 +88,7 @@ type TimelineItem =
       id: string
       at: string
       author: string
+      authorId: number
       body: string
       isProgress: boolean
       isInternal: boolean
@@ -183,6 +185,7 @@ export function TicketDetailSheet({
       isInternal?: boolean
       createdAt: string
       authorName: string
+      authorId: number
     }>
     const events = (detailQuery.data?.events || []) as Array<{
       id: number
@@ -200,6 +203,7 @@ export function TicketDetailSheet({
         id: `c-${c.id}`,
         at: c.createdAt,
         author: c.authorName,
+        authorId: c.authorId,
         body: c.body,
         isProgress: c.isProgress,
         isInternal: Boolean(c.isInternal),
@@ -215,8 +219,16 @@ export function TicketDetailSheet({
         })),
     ]
 
-    return items.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+    // Oldest first so it reads like a conversation.
+    return items.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
   }, [detailQuery.data])
+
+  // Keep the latest message in view, like a chat.
+  const scrollRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = scrollRef.current
+    if (open && el) el.scrollTop = el.scrollHeight
+  }, [open, timeline.length])
 
   const files = (detailQuery.data?.attachments || []) as Array<{
     id: number
@@ -528,90 +540,7 @@ export function TicketDetailSheet({
               </div>
             ) : null}
 
-            <div className="shrink-0 space-y-2 border-b bg-background p-4">
-              {canAgentAct && cannedReplies.length > 0 ? (
-                <NativeSelect
-                  value=""
-                  onChange={(e) => {
-                    const reply = cannedReplies.find((r) => String(r.id) === e.target.value)
-                    if (reply) insertCanned(reply.body)
-                  }}
-                >
-                  <option value="">Insert canned reply…</option>
-                  {cannedReplies.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.title}
-                    </option>
-                  ))}
-                </NativeSelect>
-              ) : null}
-
-              <div className="relative">
-                <Textarea
-                  value={comment}
-                  onChange={(e) => onCommentChange(e.target.value)}
-                  placeholder={
-                    canAgentAct
-                      ? isInternal
-                        ? "Internal note (agents only)… @mention to watch"
-                        : "Progress update… @mention to notify"
-                      : "Write a comment… @name to mention"
-                  }
-                  className={cn(
-                    "min-h-[72px] resize-none",
-                    isInternal && "border-amber-300/60 bg-amber-50/40 dark:bg-amber-950/20"
-                  )}
-                  onKeyDown={(e) => {
-                    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                      e.preventDefault()
-                      postComment()
-                    }
-                  }}
-                />
-                {showMentions && (mentionQuery.data || []).length > 0 ? (
-                  <div className="bg-popover absolute bottom-full left-0 z-10 mb-1 max-h-40 w-full overflow-y-auto rounded-md border shadow-md">
-                    {(mentionQuery.data || []).slice(0, 6).map((u) => (
-                      <button
-                        key={u.id}
-                        type="button"
-                        className="hover:bg-muted block w-full px-3 py-1.5 text-left text-sm"
-                        onClick={() => insertMention(u.name)}
-                      >
-                        <span className="font-medium">{u.name}</span>
-                        <span className="text-muted-foreground ml-2 text-xs">{u.email}</span>
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                {canAgentAct ? (
-                  <label className="flex items-center gap-1.5 text-xs">
-                    <input
-                      type="checkbox"
-                      className="accent-foreground size-3.5"
-                      checked={isInternal}
-                      onChange={(e) => setIsInternal(e.target.checked)}
-                    />
-                    Internal note
-                  </label>
-                ) : null}
-                <p className="text-muted-foreground hidden text-[11px] sm:block">
-                  ⌘/Ctrl + Enter
-                </p>
-                <Button
-                  className="ml-auto"
-                  disabled={!comment.trim() || actionMutation.isPending}
-                  onClick={postComment}
-                >
-                  <Send data-icon="inline-start" />
-                  {isInternal ? "Post note" : canAgentAct ? "Post update" : "Comment"}
-                </Button>
-              </div>
-            </div>
-
-            <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-3">
+            <div ref={scrollRef} className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-3">
               <div className="mb-3 space-y-2 rounded-lg border p-2.5">
                 <p className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">
                   Linked tickets
@@ -670,7 +599,7 @@ export function TicketDetailSheet({
 
               <div className="mb-2 flex items-center justify-between">
                 <p className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">
-                  Activity
+                  Conversation
                 </p>
                 <label className="text-muted-foreground hover:text-foreground inline-flex cursor-pointer items-center gap-1 text-[11px]">
                   <Paperclip className="size-3" />
@@ -703,56 +632,164 @@ export function TicketDetailSheet({
               ) : null}
 
               {timeline.length === 0 ? (
-                <p className="text-muted-foreground py-6 text-center text-xs">No activity yet</p>
+                <p className="text-muted-foreground py-8 text-center text-xs">
+                  No messages yet — start the conversation below.
+                </p>
               ) : (
-                <ul className="divide-border/60 divide-y rounded-lg border">
-                  {timeline.map((item) => (
-                    <li
-                      key={item.id}
-                      className={cn(
-                        "px-2.5 py-2",
-                        item.kind === "comment" &&
-                          item.isInternal &&
-                          "bg-violet-50/50 dark:bg-violet-950/20",
-                        item.kind === "comment" &&
-                          item.isProgress &&
-                          !item.isInternal &&
-                          "bg-amber-50/40 dark:bg-amber-950/15"
-                      )}
-                    >
-                      <div className="text-muted-foreground flex items-baseline justify-between gap-2 text-[10px]">
-                        <span className="min-w-0 truncate font-medium text-foreground/70">
-                          {item.kind === "comment"
-                            ? `${item.author}${
-                                item.isInternal
-                                  ? " · internal"
-                                  : item.isProgress
-                                    ? " · progress"
-                                    : ""
-                              }`
-                            : item.author || "System"}
-                        </span>
-                        <time className="shrink-0 tabular-nums" title={formatDateTime(item.at)}>
-                          {compactTime(item.at)}
-                        </time>
-                      </div>
-                      <p
-                        className={cn(
-                          "mt-0.5 whitespace-pre-wrap text-[13px] leading-snug",
-                          item.kind === "event" && "text-muted-foreground text-xs"
-                        )}
+                <ul className="space-y-3 pb-1">
+                  {timeline.map((item) =>
+                    item.kind === "event" ? (
+                      <li
+                        key={item.id}
+                        className="text-muted-foreground flex items-center gap-2 text-[11px]"
                       >
-                        {item.body}
-                      </p>
-                    </li>
-                  ))}
+                        <span className="bg-border h-px flex-1" />
+                        <span className="max-w-[80%] text-center">
+                          {item.author ? <span className="font-medium">{item.author}</span> : null}
+                          {item.author ? " · " : null}
+                          {item.body}
+                          <span title={formatDateTime(item.at)}> · {compactTime(item.at)}</span>
+                        </span>
+                        <span className="bg-border h-px flex-1" />
+                      </li>
+                    ) : (
+                      <ChatMessage key={item.id} item={item} mine={item.authorId === meId} />
+                    )
+                  )}
                 </ul>
               )}
             </div>
+            <div className="shrink-0 space-y-2 border-t bg-background p-3">
+              {canAgentAct && cannedReplies.length > 0 ? (
+                <NativeSelect
+                  value=""
+                  onChange={(e) => {
+                    const reply = cannedReplies.find((r) => String(r.id) === e.target.value)
+                    if (reply) insertCanned(reply.body)
+                  }}
+                >
+                  <option value="">Insert canned reply…</option>
+                  {cannedReplies.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.title}
+                    </option>
+                  ))}
+                </NativeSelect>
+              ) : null}
+
+              <div className="relative">
+                <Textarea
+                  value={comment}
+                  onChange={(e) => onCommentChange(e.target.value)}
+                  placeholder={
+                    canAgentAct
+                      ? isInternal
+                        ? "Internal note (agents only)… @mention to watch"
+                        : "Progress update… @mention to notify"
+                      : "Write a comment… @name to mention"
+                  }
+                  className={cn(
+                    "min-h-[56px] resize-none",
+                    isInternal && "border-amber-300/60 bg-amber-50/40 dark:bg-amber-950/20"
+                  )}
+                  onKeyDown={(e) => {
+                    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                      e.preventDefault()
+                      postComment()
+                    }
+                  }}
+                />
+                {showMentions && (mentionQuery.data || []).length > 0 ? (
+                  <div className="bg-popover absolute bottom-full left-0 z-10 mb-1 max-h-40 w-full overflow-y-auto rounded-md border shadow-md">
+                    {(mentionQuery.data || []).slice(0, 6).map((u) => (
+                      <button
+                        key={u.id}
+                        type="button"
+                        className="hover:bg-muted block w-full px-3 py-1.5 text-left text-sm"
+                        onClick={() => insertMention(u.name)}
+                      >
+                        <span className="font-medium">{u.name}</span>
+                        <span className="text-muted-foreground ml-2 text-xs">{u.email}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {canAgentAct ? (
+                  <label className="flex items-center gap-1.5 text-xs">
+                    <input
+                      type="checkbox"
+                      className="accent-foreground size-3.5"
+                      checked={isInternal}
+                      onChange={(e) => setIsInternal(e.target.checked)}
+                    />
+                    Internal note
+                  </label>
+                ) : null}
+                <p className="text-muted-foreground hidden text-[11px] sm:block">
+                  ⌘/Ctrl + Enter
+                </p>
+                <Button
+                  className="ml-auto"
+                  disabled={!comment.trim() || actionMutation.isPending}
+                  onClick={postComment}
+                >
+                  <Send data-icon="inline-start" />
+                  {isInternal ? "Post note" : canAgentAct ? "Post update" : "Comment"}
+                </Button>
+              </div>
+            </div>
+
           </div>
         )}
       </SheetContent>
     </Sheet>
+  )
+}
+
+function ChatMessage({
+  item,
+  mine,
+}: {
+  item: Extract<TimelineItem, { kind: "comment" }>
+  mine: boolean
+}) {
+  return (
+    <li className={cn("flex items-end gap-2", mine && "flex-row-reverse")}>
+      {!mine ? (
+        <Avatar size="sm" className="mb-0.5">
+          <AvatarFallback className="text-[10px]">{initials(item.author)}</AvatarFallback>
+        </Avatar>
+      ) : null}
+      <div className={cn("flex max-w-[80%] flex-col gap-1", mine && "items-end")}>
+        <div className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
+          <span className="text-foreground/80 font-medium">{mine ? "You" : item.author}</span>
+          {item.isInternal ? (
+            <span className="rounded bg-violet-100 px-1 text-[10px] font-medium text-violet-700">
+              Internal
+            </span>
+          ) : null}
+          <time className="tabular-nums" title={formatDateTime(item.at)}>
+            {compactTime(item.at)}
+          </time>
+        </div>
+        <div
+          className={cn(
+            "rounded-2xl px-3 py-2 text-sm leading-snug whitespace-pre-wrap break-words",
+            item.isInternal
+              ? "bg-violet-50 text-foreground ring-1 ring-violet-200"
+              : mine
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-foreground",
+            mine ? "rounded-br-md" : "rounded-bl-md"
+          )}
+        >
+          {item.body}
+        </div>
+      </div>
+    </li>
   )
 }
 
