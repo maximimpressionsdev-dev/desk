@@ -115,25 +115,45 @@ export async function notifyWatchers(input: {
 }
 
 /** Parse @Name mentions (simple: @First Last or @First) against active users */
+type MentionedUser = { id: number; name: string; email: string | null; phone: string | null }
+
 export async function resolveMentions(body: string) {
-  const matches = [...body.matchAll(/@([A-Za-z][A-Za-z0-9._ -]{0,60})/g)].map((m) =>
-    m[1].trim().replace(/\s+/g, " ")
+  // Text right after each "@"; names can contain spaces, so match by prefix below.
+  const mentions = [...body.matchAll(/@([^\s@][^@\n]{0,80})/g)].map((m) =>
+    m[1].replace(/\s+/g, " ").toLowerCase()
   )
-  if (!matches.length) return [] as Array<{ id: number; name: string; email: string | null }>
+  if (!mentions.length) return [] as MentionedUser[]
 
   const all = await db
-    .select({ id: users.id, name: users.name, email: users.email })
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      phone: users.phone,
+      username: users.username,
+    })
     .from(users)
     .where(eq(users.active, true))
 
-  const found: Array<{ id: number; name: string; email: string | null }> = []
-  for (const mention of matches) {
-    const lower = mention.toLowerCase()
-    const user =
-      all.find((u) => u.name.toLowerCase() === lower) ||
-      all.find((u) => u.name.toLowerCase().startsWith(lower)) ||
-      all.find((u) => (u.email || "").toLowerCase().startsWith(lower))
-    if (user && !found.some((f) => f.id === user.id)) found.push(user)
+  const startsWithWord = (text: string, word: string) =>
+    Boolean(word) && text.startsWith(word) && !/[a-z0-9]/i.test(text.charAt(word.length))
+
+  const found: MentionedUser[] = []
+  for (const text of mentions) {
+    // Longest matching full name wins ("Nimal Perera" over "Nimal").
+    const candidates = all
+      .map((u) => {
+        const keys = [u.name, u.username, u.email?.split("@")[0]]
+          .filter(Boolean)
+          .map((k) => k!.toLowerCase().replace(/\s+/g, " "))
+        const hit = keys.filter((k) => startsWithWord(text, k)).sort((a, b) => b.length - a.length)[0]
+        return hit ? { u, len: hit.length } : null
+      })
+      .filter(Boolean) as Array<{ u: (typeof all)[number]; len: number }>
+    const best = candidates.sort((a, b) => b.len - a.len)[0]?.u
+    if (best && !found.some((f) => f.id === best.id)) {
+      found.push({ id: best.id, name: best.name, email: best.email, phone: best.phone })
+    }
   }
   return found
 }

@@ -575,6 +575,32 @@ export async function updateTicketStatus(input: {
     }
   }
 
+  // Let the owner (assignee) know when someone else puts their ticket on hold.
+  if (input.status === "ON_HOLD" && ticket.assigneeId && ticket.assigneeId !== input.actorId) {
+    const [owner] = await db.select().from(users).where(eq(users.id, ticket.assigneeId)).limit(1)
+    if (owner?.email?.trim()) {
+      const [actor] = await db
+        .select({ name: users.name })
+        .from(users)
+        .where(eq(users.id, input.actorId))
+        .limit(1)
+      const summary = `${actor?.name || "Someone"} put this ticket on hold. Reason: ${input.holdReason?.trim()}`
+      await sendEmail({
+        to: owner.email,
+        subject: `[${ticket.code}] On hold · ${ticket.title}`,
+        html: ticketUpdatedEmailHtml({
+          code: ticket.code,
+          title: ticket.title,
+          summary,
+          status: input.status,
+          priority: ticket.priority,
+          updateLabel: "On hold",
+        }),
+        text: `Ticket ${ticket.code}: ${summary}`,
+      })
+    }
+  }
+
   return updated
 }
 
@@ -649,7 +675,9 @@ export async function addComment(input: {
       ticketId: ticket.id,
       userId: user.id,
     })
-    if (user.id !== input.actorId) {
+    if (user.id === input.actorId) continue
+    // Email when they have an address, otherwise fall back to SMS.
+    if (user.email?.trim()) {
       await sendEmail({
         to: user.email,
         subject: `[${ticket.code}] You were mentioned · ${ticket.title}`,
@@ -663,6 +691,12 @@ export async function addComment(input: {
           updateLabel: "Mention",
         }),
         text: body,
+      })
+    } else if (user.phone) {
+      const url = `${appBaseUrl()}/tickets/${ticket.code}`.trim()
+      await sendSms({
+        to: user.phone,
+        text: `Desk: You were mentioned on ${ticket.code} — ${body.slice(0, 120)}${url ? ` ${url}` : ""}`,
       })
     }
   }
