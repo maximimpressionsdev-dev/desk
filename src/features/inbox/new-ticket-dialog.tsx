@@ -140,10 +140,10 @@ export function NewTicketDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="flex max-h-[min(90svh,44rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl"
+        className="flex max-h-[min(90svh,48rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl"
         showCloseButton
       >
-        <DialogHeader className="gap-1 border-b px-5 py-4">
+        <DialogHeader className="gap-1 border-b px-6 py-5">
           <DialogTitle className="text-base font-semibold">New ticket</DialogTitle>
           <DialogDescription className="text-xs">
             Pick where it goes and what&apos;s wrong — that&apos;s all we need.
@@ -157,11 +157,11 @@ export function NewTicketDialog({
           }}
           className="flex min-h-0 flex-1 flex-col"
         >
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
             <Field label="Department" htmlFor="nt-dept">
               <NativeSelect
                 id="nt-dept"
-                className="h-9"
+                className="h-10"
                 value={departmentId}
                 onChange={(e) => chooseDepartment(e.target.value)}
               >
@@ -177,7 +177,7 @@ export function NewTicketDialog({
             <Field label="Issue" htmlFor="nt-issue">
               <NativeSelect
                 id="nt-issue"
-                className="h-9"
+                className="h-10"
                 value={categoryId}
                 disabled={!departmentId || issuesQuery.isLoading}
                 onChange={(e) => chooseCategory(e.target.value)}
@@ -202,7 +202,7 @@ export function NewTicketDialog({
             <Field label="Sub issue" htmlFor="nt-reason">
               <NativeSelect
                 id="nt-reason"
-                className="h-9"
+                className="h-10"
                 value={reasonId}
                 disabled={!categoryId}
                 onChange={(e) => setReasonId(e.target.value)}
@@ -246,7 +246,7 @@ export function NewTicketDialog({
             <Field label="Notes" htmlFor="new-ticket-notes">
               <Textarea
                 id="new-ticket-notes"
-                className="min-h-16 resize-y text-sm"
+                className="min-h-20 resize-y text-sm"
                 rows={2}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -255,7 +255,7 @@ export function NewTicketDialog({
             </Field>
           </div>
 
-          <DialogFooter className="mx-0 mb-0 items-center px-5 py-3 sm:justify-between">
+          <DialogFooter className="mx-0 mb-0 items-center px-6 py-4 sm:justify-between">
             <p className="text-muted-foreground hidden min-w-0 items-center gap-1 truncate text-xs sm:flex">
               {summary.length ? (
                 summary.map((part, i) => (
@@ -297,8 +297,8 @@ function Field({
   children: React.ReactNode
 }) {
   return (
-    <div className="grid gap-1.5 sm:grid-cols-[5.5rem_1fr] sm:gap-3">
-      <Label htmlFor={htmlFor} className="text-muted-foreground self-start text-xs font-medium sm:pt-2.5">
+    <div className="grid gap-1.5 sm:grid-cols-[6.5rem_1fr] sm:gap-3">
+      <Label htmlFor={htmlFor} className="text-muted-foreground self-start text-sm font-medium sm:pt-2.5">
         {label}
       </Label>
       <div className="min-w-0">{children}</div>
