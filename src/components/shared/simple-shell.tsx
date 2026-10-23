@@ -35,7 +35,7 @@ const NAV = [
 ]
 
 const navItemClass =
-  "relative inline-flex h-11 shrink-0 items-center gap-2 px-3 text-sm font-medium transition-colors after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full"
+  "relative inline-flex h-12 shrink-0 items-center gap-2.5 px-4 text-sm font-medium transition-colors after:absolute after:inset-x-4 after:bottom-0 after:h-0.5 after:rounded-full"
 
 export function SimpleShell({
   children,
@@ -124,21 +124,21 @@ export function SimpleShell({
   return (
     <div className="bg-background flex min-h-svh flex-col">
       <header className="bg-background/95 supports-[backdrop-filter]:bg-background/70 sticky top-0 z-20 border-b backdrop-blur">
-        <div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-4 px-4 md:px-6">
-          <Link href="/" className="flex shrink-0 items-center gap-2.5">
+        <div className="mx-auto grid h-16 w-full max-w-7xl grid-cols-[1fr_auto] items-center gap-4 px-4 md:grid-cols-[1fr_auto_1fr] md:px-6">
+          <Link href="/" className="flex shrink-0 items-center gap-2.5 justify-self-start">
             <div className="bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-lg">
               <Ticket className="size-4" />
             </div>
             <span className="hidden text-sm leading-tight font-semibold sm:block">Tickets</span>
           </Link>
 
-          <nav aria-label="Main" className="hidden items-center self-stretch md:flex [&>*]:h-full">
+          <nav aria-label="Main" className="hidden items-center gap-1 self-stretch md:flex [&>*]:h-full">
             {navItems}
           </nav>
 
-          <div className="ml-auto flex items-center gap-1.5">
+          <div className="flex items-center gap-2 justify-self-end">
             {onNewTicket ? (
-              <Button size="sm" className="h-8 gap-1.5" onClick={onNewTicket} title="New ticket (N)">
+              <Button className="h-9 gap-1.5 px-3.5" onClick={onNewTicket} title="New ticket (N)">
                 <Plus className="size-4" />
                 <span className="hidden sm:inline">New ticket</span>
                 <kbd className="bg-primary-foreground/15 text-primary-foreground/80 pointer-events-none hidden rounded px-1.5 py-px font-mono text-[10px] font-medium lg:inline">

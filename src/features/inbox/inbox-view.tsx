@@ -291,10 +291,10 @@ export function InboxView() {
               )}
             </p>
           </div>
-          <div className="relative w-full sm:w-72">
-            <Search className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
+          <div className="relative w-full sm:w-80">
+            <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
             <Input
-              className="h-9 pl-8"
+              className="h-10 pl-9"
               placeholder="Search code, title, person…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -302,12 +302,12 @@ export function InboxView() {
           </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
             <div
               role="tablist"
               aria-label="Status"
-              className="bg-muted/60 inline-flex items-center gap-0.5 rounded-lg p-0.5"
+              className="bg-muted/60 inline-flex items-center gap-1 rounded-xl p-1"
             >
               {STATUS_VIEWS.map((v) => {
                 const active = status === v.value
@@ -319,7 +319,7 @@ export function InboxView() {
                     aria-selected={active}
                     onClick={() => setStatusOverride(v.value)}
                     className={cn(
-                      "rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors",
+                      "rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors",
                       active
                         ? "bg-background text-foreground shadow-sm"
                         : "text-muted-foreground hover:text-foreground"
@@ -332,10 +332,10 @@ export function InboxView() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2.5">
             <NativeSelect
               aria-label="Priority"
-              className="h-8 w-auto min-w-[8.5rem]"
+              className="h-10 w-auto min-w-[9.5rem] px-3"
               value={priority}
               onChange={(e) => setPriority(e.target.value)}
             >
@@ -348,7 +348,7 @@ export function InboxView() {
             </NativeSelect>
             <NativeSelect
               aria-label="Department"
-              className="h-8 w-auto min-w-[10rem]"
+              className="h-10 w-auto min-w-[11rem] px-3"
               value={departmentId}
               onChange={(e) => setDepartmentId(e.target.value)}
             >
@@ -376,7 +376,7 @@ export function InboxView() {
               />
             ) : null}
             {hasFilters ? (
-              <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={clearFilters}>
+              <Button variant="ghost" className="text-muted-foreground h-10" onClick={clearFilters}>
                 <X data-icon="inline-start" />
                 Reset
               </Button>
@@ -644,7 +644,7 @@ function FilterToggle({
       size="sm"
       variant={active ? "secondary" : "outline"}
       aria-pressed={active}
-      className={cn("h-8", active && "ring-foreground/15 ring-1")}
+      className={cn("h-10 gap-2 px-3.5 text-sm", active && "ring-foreground/15 ring-1")}
       onClick={onClick}
     >
       {icon}
