@@ -7,7 +7,7 @@ import { toast } from "sonner"
 import { AlarmClock, CheckCheck, Hand, Search, UserX, X } from "lucide-react"
 import { api } from "@/lib/api"
 import { PRIORITY_LABELS, TICKET_PRIORITIES } from "@/lib/ticket-constants"
-import { cn, formatDateTime, formatRelative, initials } from "@/lib/utils"
+import { cn, formatDateTime, formatDuration, formatRelative, initials } from "@/lib/utils"
 import { SimpleShell, type InboxTab } from "@/components/shared/simple-shell"
 import { EmptyState } from "@/components/shared/empty-state"
 import { PriorityBadge, StatusBadge, statusDot } from "@/components/ticket-badges"
@@ -445,6 +445,7 @@ export function InboxView() {
                     <TableHead className="w-[9rem]">Status</TableHead>
                     <TableHead className="hidden w-[6.5rem] lg:table-cell">Priority</TableHead>
                     <TableHead className="w-[12rem]">Assignee</TableHead>
+                    <TableHead className="hidden w-[6.5rem] lg:table-cell">Total time</TableHead>
                     <TableHead className="hidden w-[7rem] lg:table-cell">Updated</TableHead>
                     {tab === "queue" ? <TableHead className="w-[5.5rem]" /> : null}
                   </TableRow>
@@ -489,6 +490,14 @@ export function InboxView() {
                         </TableCell>
                         <TableCell>
                           <AssigneeCell name={t.assigneeName} />
+                        </TableCell>
+                        <TableCell
+                          className="hidden text-xs tabular-nums lg:table-cell"
+                          title={`Opened ${formatDateTime(t.createdAt)}${
+                            t.closedAt ? ` · closed ${formatDateTime(t.closedAt)}` : ""
+                          }`}
+                        >
+                          {formatDuration(t.createdAt, t.closedAt)}
                         </TableCell>
                         <TableCell
                           className="text-muted-foreground hidden text-xs lg:table-cell"
@@ -552,7 +561,9 @@ export function InboxView() {
                             <span className="font-mono">{t.code}</span>
                             <span aria-hidden>·</span>
                             <span className="truncate">{t.departmentName}</span>
-                            <span className="ml-auto shrink-0">{formatRelative(t.updatedAt)}</span>
+                            <span className="ml-auto shrink-0">
+                              {formatDuration(t.createdAt, t.closedAt)} · {formatRelative(t.updatedAt)}
+                            </span>
                           </div>
                           <p className="font-medium leading-snug">{t.title}</p>
                           <div className="flex flex-wrap items-center gap-1.5">

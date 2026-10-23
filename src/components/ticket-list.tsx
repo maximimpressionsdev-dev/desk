@@ -19,6 +19,8 @@ export type TicketListItem = {
   assigneeName: string | null
   dueAt: string | null
   resolvedAt?: string | null
+  closedAt?: string | null
+  createdAt?: string
   updatedAt: string
 }
 
