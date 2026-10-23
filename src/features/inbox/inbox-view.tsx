@@ -213,10 +213,10 @@ export function InboxView() {
     onError: (err: Error) => toast.error(err.message),
   })
 
-  function openTicket(code: string) {
+  function openTicket(code: string, inTab: InboxTab = tab) {
     setSelectedCode(code)
     setSheetOpen(true)
-    router.replace(`/?t=${code}&tab=${tab}`, { scroll: false })
+    router.replace(`/?t=${code}&tab=${inTab}`, { scroll: false })
   }
 
   function closeSheet() {
@@ -612,7 +612,8 @@ export function InboxView() {
         onOpenChange={setCreateOpen}
         onCreated={(code) => {
           setTab("mine")
-          openTicket(code)
+          setStatusOverride(null)
+          openTicket(code, "mine")
         }}
       />
       <TicketDetailSheet
