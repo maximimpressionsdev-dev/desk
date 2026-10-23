@@ -4,20 +4,19 @@ import { useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
-import { Plus, Search } from "lucide-react"
+import { AlarmClock, CheckCheck, Hand, Search, UserX, X } from "lucide-react"
 import { api } from "@/lib/api"
-import { TICKET_PRIORITIES, TICKET_STATUSES } from "@/lib/ticket-constants"
-import { cn, formatDateTime } from "@/lib/utils"
+import { PRIORITY_LABELS, TICKET_PRIORITIES } from "@/lib/ticket-constants"
+import { cn, formatDateTime, formatRelative, initials } from "@/lib/utils"
 import { SimpleShell, type InboxTab } from "@/components/shared/simple-shell"
 import { EmptyState } from "@/components/shared/empty-state"
 import { PriorityBadge, StatusBadge, statusDot } from "@/components/ticket-badges"
 import { NewTicketDialog } from "@/features/inbox/new-ticket-dialog"
 import { TicketDetailSheet } from "@/features/inbox/ticket-detail-sheet"
 import type { TicketListItem } from "@/components/ticket-list"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { NativeSelect } from "@/components/ui/native-select"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -37,6 +36,16 @@ const TAB_META: Record<InboxTab, { title: string; scope: "assigned" | "mine" | "
 
 // Pseudo-status: everything except CLOSED and CANCELLED.
 const ACTIVE_STATUS = "ACTIVE"
+
+const STATUS_VIEWS = [
+  { value: ACTIVE_STATUS, label: "Active" },
+  { value: "OPEN", label: "Open" },
+  { value: "IN_PROGRESS", label: "In progress" },
+  { value: "ON_HOLD", label: "On hold" },
+  { value: "RESOLVED", label: "Resolved" },
+  { value: "CLOSED", label: "Closed" },
+  { value: "", label: "All" },
+]
 
 function defaultStatusFor(tab: InboxTab) {
   return tab === "queue" ? ACTIVE_STATUS : ""
@@ -59,6 +68,7 @@ export function InboxView() {
   const [priority, setPriority] = useState("")
   const [departmentId, setDepartmentId] = useState("")
   const [overdueOnly, setOverdueOnly] = useState(false)
+  const [unassignedOnly, setUnassignedOnly] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
   const [selectedCode, setSelectedCode] = useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -128,7 +138,7 @@ export function InboxView() {
     staleTime: 5 * 60_000,
   })
 
-  const myDepartmentIds = meQuery.data?.departmentIds ?? []
+  const myDepartmentIds = useMemo(() => meQuery.data?.departmentIds ?? [], [meQuery.data])
   const departmentOptions = useMemo(() => {
     const all = departmentsQuery.data || []
     // Non-admins can only browse their own departments' queues.
@@ -156,7 +166,8 @@ export function InboxView() {
   })
 
   const filtered = useMemo(() => {
-    const list = ticketsQuery.data || []
+    let list = ticketsQuery.data || []
+    if (unassignedOnly) list = list.filter((t) => !t.assigneeName)
     const q = query.trim().toLowerCase()
     if (!q) return list
     return list.filter(
@@ -166,7 +177,23 @@ export function InboxView() {
         t.departmentName.toLowerCase().includes(q) ||
         (t.assigneeName || "").toLowerCase().includes(q)
     )
-  }, [ticketsQuery.data, query])
+  }, [ticketsQuery.data, query, unassignedOnly])
+
+  const overdueCount = useMemo(() => filtered.filter(isOverdue).length, [filtered])
+  const hasFilters =
+    status !== defaultStatusFor(tab) ||
+    Boolean(priority || departmentId || query) ||
+    overdueOnly ||
+    unassignedOnly
+
+  function clearFilters() {
+    setStatusOverride(null)
+    setPriority("")
+    setDepartmentId("")
+    setQuery("")
+    setOverdueOnly(false)
+    setUnassignedOnly(false)
+  }
 
   const claimMutation = useMutation({
     mutationFn: (code: string) => api.post(`/api/tickets/${code}/actions`, { action: "claim" }),
@@ -207,6 +234,7 @@ export function InboxView() {
     setQuery("")
     setStatusOverride(null)
     setDepartmentId("")
+    setUnassignedOnly(false)
     setSelected(new Set())
     router.replace(
       selectedCode ? `/?t=${selectedCode}&tab=${next}` : `/?tab=${next}`,
@@ -243,286 +271,345 @@ export function InboxView() {
         queue: queueCount.data,
       }}
     >
-      <div className="space-y-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight">{TAB_META[tab].title}</h1>
+      <div className="mx-auto w-full max-w-7xl space-y-5 pb-24">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-semibold tracking-tight">{TAB_META[tab].title}</h1>
             <p className="text-muted-foreground text-sm">
-              {filtered.length} ticket{filtered.length === 1 ? "" : "s"}
+              {ticketsQuery.isLoading ? (
+                "Loading tickets…"
+              ) : (
+                <>
+                  {filtered.length} ticket{filtered.length === 1 ? "" : "s"}
+                  {overdueCount > 0 ? (
+                    <span className="text-rose-600 dark:text-rose-400">
+                      {" "}
+                      · {overdueCount} overdue
+                    </span>
+                  ) : null}
+                </>
+              )}
             </p>
           </div>
-          <div className="flex w-full items-center gap-2 sm:max-w-md">
-            <div className="relative min-w-0 flex-1">
-              <Search className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
-              <Input
-                className="h-10 pl-8"
-                placeholder="Search…"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </div>
-            <Button
-              size="lg"
-              className="hidden h-10 shrink-0 gap-2 shadow-sm md:inline-flex"
-              onClick={() => setCreateOpen(true)}
-              title="New ticket (N)"
-            >
-              <Plus className="size-4" />
-              New ticket
-              <kbd className="bg-primary-foreground/15 text-primary-foreground/80 pointer-events-none rounded px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-wide">
-                N
-              </kbd>
-            </Button>
+          <div className="relative w-full sm:w-72">
+            <Search className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
+            <Input
+              className="h-9 pl-8"
+              placeholder="Search code, title, person…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
           </div>
         </div>
 
-        <Card className="border-border/50 bg-card/40 py-0">
-          <CardContent className="grid gap-3 p-3 sm:grid-cols-2 lg:grid-cols-5">
-            <div className="space-y-1">
-              <Label className="text-muted-foreground text-[10px] uppercase tracking-wider">
-                Status
-              </Label>
-              <NativeSelect value={status} onChange={(e) => setStatusOverride(e.target.value)}>
-                <option value={ACTIVE_STATUS}>Active (not closed)</option>
-                <option value="">All</option>
-                {TICKET_STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </NativeSelect>
+        <div className="space-y-3">
+          <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
+            <div
+              role="tablist"
+              aria-label="Status"
+              className="bg-muted/60 inline-flex items-center gap-0.5 rounded-lg p-0.5"
+            >
+              {STATUS_VIEWS.map((v) => {
+                const active = status === v.value
+                return (
+                  <button
+                    key={v.label}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setStatusOverride(v.value)}
+                    className={cn(
+                      "rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors",
+                      active
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {v.label}
+                  </button>
+                )
+              })}
             </div>
-            <div className="space-y-1">
-              <Label className="text-muted-foreground text-[10px] uppercase tracking-wider">
-                Priority
-              </Label>
-              <NativeSelect value={priority} onChange={(e) => setPriority(e.target.value)}>
-                <option value="">All</option>
-                {TICKET_PRIORITIES.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </NativeSelect>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-muted-foreground text-[10px] uppercase tracking-wider">
-                Department
-              </Label>
-              <NativeSelect
-                value={departmentId}
-                onChange={(e) => setDepartmentId(e.target.value)}
-              >
-                <option value="">
-                  {tab === "queue" && myDepartmentIds.length ? "My departments" : "All"}
-                </option>
-                {departmentOptions.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </NativeSelect>
-            </div>
-            <div className="flex items-end pb-1">
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  className="accent-foreground size-4"
-                  checked={overdueOnly}
-                  onChange={(e) => setOverdueOnly(e.target.checked)}
-                />
-                Overdue only
-              </label>
-            </div>
-            <div className="flex items-end justify-end gap-2">
-              {(status !== defaultStatusFor(tab) || priority || departmentId || overdueOnly) && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setStatusOverride(null)
-                    setPriority("")
-                    setDepartmentId("")
-                    setOverdueOnly(false)
-                  }}
-                >
-                  Clear
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        {selected.size > 0 ? (
-          <div className="bg-muted/40 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-sm">
-            <span className="font-medium">{selected.size} selected</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <NativeSelect
+              aria-label="Priority"
+              className="h-8 w-auto min-w-[8.5rem]"
+              value={priority}
+              onChange={(e) => setPriority(e.target.value)}
+            >
+              <option value="">Any priority</option>
+              {TICKET_PRIORITIES.map((p) => (
+                <option key={p} value={p}>
+                  {PRIORITY_LABELS[p]}
+                </option>
+              ))}
+            </NativeSelect>
+            <NativeSelect
+              aria-label="Department"
+              className="h-8 w-auto min-w-[10rem]"
+              value={departmentId}
+              onChange={(e) => setDepartmentId(e.target.value)}
+            >
+              <option value="">
+                {tab === "queue" && myDepartmentIds.length ? "My departments" : "All departments"}
+              </option>
+              {departmentOptions.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </NativeSelect>
+            <FilterToggle
+              active={overdueOnly}
+              onClick={() => setOverdueOnly((v) => !v)}
+              icon={<AlarmClock />}
+              label="Overdue"
+            />
+            {tab === "queue" ? (
+              <FilterToggle
+                active={unassignedOnly}
+                onClick={() => setUnassignedOnly((v) => !v)}
+                icon={<UserX />}
+                label="Unassigned"
+              />
+            ) : null}
+            {hasFilters ? (
+              <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={clearFilters}>
+                <X data-icon="inline-start" />
+                Reset
+              </Button>
+            ) : null}
+          </div>
+        </div>
+
+        {ticketsQuery.isLoading ? (
+          <div className="border-border/60 bg-card space-y-2 rounded-xl border p-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-11 w-full rounded-lg" />
+            ))}
+          </div>
+        ) : !filtered.length ? (
+          hasFilters ? (
+            <EmptyState
+              title="No tickets match these filters"
+              description="Try a different status or clear the filters."
+              action={
+                <Button variant="outline" onClick={clearFilters}>
+                  Reset filters
+                </Button>
+              }
+            />
+          ) : (
+            <EmptyState
+              title={
+                tab === "for-me"
+                  ? "Nothing assigned to you"
+                  : tab === "mine"
+                    ? "You haven’t filed any tickets yet"
+                    : "Queue is clear"
+              }
+              description={
+                tab === "mine"
+                  ? "Hit New ticket (or press N) to send work to a department."
+                  : tab === "queue"
+                    ? "When your departments get requests, they’ll show up here."
+                    : "Claim something from Queue to start."
+              }
+              action={
+                tab === "mine" ? (
+                  <Button onClick={() => setCreateOpen(true)}>New ticket</Button>
+                ) : tab === "for-me" ? (
+                  <Button variant="outline" onClick={() => changeTab("queue")}>
+                    Open queue
+                  </Button>
+                ) : undefined
+              }
+            />
+          )
+        ) : (
+          <>
+            {/* Desktop table */}
+            <div className="border-border/60 bg-card hidden overflow-hidden rounded-xl border md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/30 hover:bg-muted/30">
+                    <TableHead className="w-10 pl-4">
+                      <input
+                        type="checkbox"
+                        aria-label="Select all"
+                        className="accent-foreground size-4 align-middle"
+                        checked={selected.size === filtered.length && filtered.length > 0}
+                        onChange={toggleSelectAll}
+                      />
+                    </TableHead>
+                    <TableHead>Ticket</TableHead>
+                    <TableHead className="w-[9rem]">Status</TableHead>
+                    <TableHead className="hidden w-[6.5rem] lg:table-cell">Priority</TableHead>
+                    <TableHead className="w-[12rem]">Assignee</TableHead>
+                    <TableHead className="hidden w-[7rem] lg:table-cell">Updated</TableHead>
+                    {tab === "queue" ? <TableHead className="w-[5.5rem]" /> : null}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((t) => {
+                    const overdue = isOverdue(t)
+                    return (
+                      <TableRow
+                        key={t.id}
+                        data-state={selected.has(t.code) ? "selected" : undefined}
+                        className={cn(
+                          "group cursor-pointer",
+                          selectedCode === t.code && "bg-muted/50"
+                        )}
+                        onClick={() => openTicket(t.code)}
+                      >
+                        <TableCell className="pl-4" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            aria-label={`Select ${t.code}`}
+                            className="accent-foreground size-4 align-middle"
+                            checked={selected.has(t.code)}
+                            onChange={() => toggleSelect(t.code)}
+                          />
+                        </TableCell>
+                        <TableCell className="max-w-0 py-2.5">
+                          <p className="truncate font-medium">{t.title}</p>
+                          <div className="text-muted-foreground mt-0.5 flex items-center gap-1.5 text-xs">
+                            <span className={cn("size-1.5 shrink-0 rounded-full", statusDot(t.status))} />
+                            <span className="font-mono">{t.code}</span>
+                            <span aria-hidden>·</span>
+                            <span className="truncate">{t.departmentName}</span>
+                            {overdue ? <OverdueTag /> : null}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge status={t.status} resolvedAt={t.resolvedAt} />
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          <PriorityBadge priority={t.priority} />
+                        </TableCell>
+                        <TableCell>
+                          <AssigneeCell name={t.assigneeName} />
+                        </TableCell>
+                        <TableCell
+                          className="text-muted-foreground hidden text-xs lg:table-cell"
+                          title={formatDateTime(t.updatedAt)}
+                        >
+                          {formatRelative(t.updatedAt)}
+                        </TableCell>
+                        {tab === "queue" ? (
+                          <TableCell className="pr-4 text-right">
+                            {!t.assigneeName ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={claimMutation.isPending}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  claimMutation.mutate(t.code)
+                                }}
+                              >
+                                Claim
+                              </Button>
+                            ) : null}
+                          </TableCell>
+                        ) : null}
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile cards */}
+            <ul className="space-y-2 md:hidden">
+              {filtered.map((t) => {
+                const overdue = isOverdue(t)
+                return (
+                  <li key={t.id}>
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openTicket(t.code)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") openTicket(t.code)
+                      }}
+                      className={cn(
+                        "border-border/60 bg-card active:bg-muted/50 block w-full rounded-xl border p-3 text-left",
+                        selected.has(t.code) && "ring-foreground/20 ring-2"
+                      )}
+                    >
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${t.code}`}
+                          className="accent-foreground mt-0.5 size-4"
+                          checked={selected.has(t.code)}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={() => toggleSelect(t.code)}
+                        />
+                        <div className="min-w-0 flex-1 space-y-1.5">
+                          <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                            <span className="font-mono">{t.code}</span>
+                            <span aria-hidden>·</span>
+                            <span className="truncate">{t.departmentName}</span>
+                            <span className="ml-auto shrink-0">{formatRelative(t.updatedAt)}</span>
+                          </div>
+                          <p className="font-medium leading-snug">{t.title}</p>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <StatusBadge status={t.status} resolvedAt={t.resolvedAt} />
+                            <PriorityBadge priority={t.priority} />
+                            {overdue ? <OverdueTag /> : null}
+                            <span className="text-muted-foreground ml-auto truncate text-xs">
+                              {t.assigneeName || "Unassigned"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          </>
+        )}
+      </div>
+
+      {selected.size > 0 ? (
+        <div className="fixed inset-x-0 bottom-4 z-30 flex justify-center px-4">
+          <div className="bg-popover text-popover-foreground ring-foreground/10 flex items-center gap-1 rounded-xl p-1.5 pl-4 shadow-lg ring-1">
+            <span className="mr-2 text-sm font-medium">{selected.size} selected</span>
             <Button
               size="sm"
-              variant="secondary"
-              onClick={() =>
-                bulkMutation.mutate({ codes: [...selected], action: "claim" })
-              }
+              variant="ghost"
+              disabled={bulkMutation.isPending}
+              onClick={() => bulkMutation.mutate({ codes: [...selected], action: "claim" })}
             >
+              <Hand data-icon="inline-start" />
               Claim
             </Button>
             <Button
               size="sm"
-              variant="outline"
-              onClick={() =>
-                bulkMutation.mutate({ codes: [...selected], action: "close" })
-              }
+              variant="ghost"
+              disabled={bulkMutation.isPending}
+              onClick={() => bulkMutation.mutate({ codes: [...selected], action: "close" })}
             >
+              <CheckCheck data-icon="inline-start" />
               Close
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
-              Clear
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              aria-label="Clear selection"
+              onClick={() => setSelected(new Set())}
+            >
+              <X />
             </Button>
           </div>
-        ) : null}
-
-        {ticketsQuery.isLoading ? (
-          <Card className="border-border/50 bg-card/40 overflow-hidden py-0">
-            <CardContent className="space-y-2 p-4">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full rounded-lg" />
-              ))}
-            </CardContent>
-          </Card>
-        ) : !filtered.length ? (
-          <EmptyState
-            title={
-              tab === "for-me"
-                ? "Nothing assigned to you"
-                : tab === "mine"
-                  ? "You haven’t filed any tickets yet"
-                  : "Queue is empty"
-            }
-            description={
-              tab === "mine"
-                ? "Hit New ticket (or press N) to send work to a department."
-                : tab === "queue"
-                  ? "When your departments get requests, they’ll show up here."
-                  : "Claim something from Queue to start."
-            }
-            action={
-              tab === "mine" ? (
-                <Button onClick={() => setCreateOpen(true)}>New ticket</Button>
-              ) : tab === "for-me" ? (
-                <Button variant="outline" onClick={() => changeTab("queue")}>
-                  Open queue
-                </Button>
-              ) : undefined
-            }
-          />
-        ) : (
-          <Card className="border-border/50 bg-card/40 overflow-hidden py-0">
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead className="w-10">
-                        <input
-                          type="checkbox"
-                          className="accent-foreground size-4"
-                          checked={selected.size === filtered.length && filtered.length > 0}
-                          onChange={toggleSelectAll}
-                        />
-                      </TableHead>
-                      <TableHead className="w-[7rem]">Code</TableHead>
-                      <TableHead>Title</TableHead>
-                      <TableHead className="hidden sm:table-cell">Department</TableHead>
-                      <TableHead className="hidden md:table-cell">Status</TableHead>
-                      <TableHead className="hidden lg:table-cell">Priority</TableHead>
-                      <TableHead className="hidden md:table-cell">Assignee</TableHead>
-                      <TableHead className="hidden lg:table-cell">Updated</TableHead>
-                      {tab === "queue" ? <TableHead className="w-[5.5rem]" /> : null}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filtered.map((t) => {
-                      const overdue = isOverdue(t)
-                      return (
-                        <TableRow
-                          key={t.id}
-                          className={cn(
-                            "hover:bg-muted/40 cursor-pointer",
-                            selectedCode === t.code && "bg-muted/50",
-                            overdue && "bg-rose-50/40 dark:bg-rose-950/10"
-                          )}
-                          onClick={() => openTicket(t.code)}
-                        >
-                          <TableCell onClick={(e) => e.stopPropagation()}>
-                            <input
-                              type="checkbox"
-                              className="accent-foreground size-4"
-                              checked={selected.has(t.code)}
-                              onChange={() => toggleSelect(t.code)}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <span
-                                className={cn("size-1.5 shrink-0 rounded-full", statusDot(t.status))}
-                              />
-                              <span className="font-mono text-[11px] font-medium">{t.code}</span>
-                              {overdue ? (
-                                <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-medium text-rose-700 dark:bg-rose-950/50 dark:text-rose-300">
-                                  Overdue
-                                </span>
-                              ) : null}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <p className="max-w-[18rem] truncate font-medium sm:max-w-md">
-                              {t.title}
-                            </p>
-                            <div className="mt-1 flex flex-wrap gap-1.5 md:hidden">
-                              <StatusBadge status={t.status} resolvedAt={t.resolvedAt} />
-                              <PriorityBadge priority={t.priority} />
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground hidden sm:table-cell">
-                            {t.departmentName}
-                          </TableCell>
-                          <TableCell className="hidden md:table-cell">
-                            <StatusBadge status={t.status} resolvedAt={t.resolvedAt} />
-                          </TableCell>
-                          <TableCell className="hidden lg:table-cell">
-                            <PriorityBadge priority={t.priority} />
-                          </TableCell>
-                          <TableCell className="text-muted-foreground hidden md:table-cell">
-                            {t.assigneeName || "—"}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground hidden text-xs lg:table-cell">
-                            {formatDateTime(t.updatedAt)}
-                          </TableCell>
-                          {tab === "queue" ? (
-                            <TableCell className="text-right">
-                              {!t.assigneeName ? (
-                                <Button
-                                  size="sm"
-                                  variant="secondary"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    claimMutation.mutate(t.code)
-                                  }}
-                                >
-                                  Claim
-                                </Button>
-                              ) : null}
-                            </TableCell>
-                          ) : null}
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+        </div>
+      ) : null}
 
       <NewTicketDialog
         open={createOpen}
@@ -538,5 +625,50 @@ export function InboxView() {
         onOpenChange={(o) => (o ? setSheetOpen(true) : closeSheet())}
       />
     </SimpleShell>
+  )
+}
+
+function FilterToggle({
+  active,
+  onClick,
+  icon,
+  label,
+}: {
+  active: boolean
+  onClick: () => void
+  icon: React.ReactNode
+  label: string
+}) {
+  return (
+    <Button
+      size="sm"
+      variant={active ? "secondary" : "outline"}
+      aria-pressed={active}
+      className={cn("h-8", active && "ring-foreground/15 ring-1")}
+      onClick={onClick}
+    >
+      {icon}
+      {label}
+    </Button>
+  )
+}
+
+function OverdueTag() {
+  return (
+    <span className="shrink-0 rounded bg-rose-100 px-1.5 py-px text-[10px] font-medium text-rose-700 dark:bg-rose-950/50 dark:text-rose-300">
+      Overdue
+    </span>
+  )
+}
+
+function AssigneeCell({ name }: { name: string | null }) {
+  if (!name) return <span className="text-muted-foreground text-sm">Unassigned</span>
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      <Avatar size="sm">
+        <AvatarFallback className="text-[10px]">{initials(name)}</AvatarFallback>
+      </Avatar>
+      <span className="truncate text-sm">{name}</span>
+    </div>
   )
 }

@@ -4,11 +4,26 @@ import { useEffect, useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
 import { toast } from "sonner"
-import { Bell, BellOff, Link2, Paperclip, Send, UserPlus } from "lucide-react"
+import {
+  Ban,
+  Bell,
+  BellOff,
+  CheckCheck,
+  CircleCheck,
+  Link2,
+  Paperclip,
+  Pause,
+  Play,
+  RotateCcw,
+  Send,
+  UserCheck,
+  UserPlus,
+} from "lucide-react"
 import { api } from "@/lib/api"
 import {
   STATUS_LABELS,
   allowedNextStatuses,
+  isTerminalStatus,
   type TicketStatus,
 } from "@/lib/ticket-constants"
 import { cn, formatDateTime } from "@/lib/utils"
@@ -27,6 +42,31 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 
 type Member = { userId: number; name: string }
+
+// Status changes are shown as verbs; `primary` marks the usual next step.
+function statusAction(
+  from: TicketStatus,
+  to: TicketStatus
+): { label: string; icon: React.ElementType; primary?: boolean } {
+  switch (to) {
+    case "IN_PROGRESS":
+      return from === "RESOLVED"
+        ? { label: "Reopen", icon: RotateCcw }
+        : { label: from === "ON_HOLD" ? "Resume" : "Start work", icon: Play, primary: true }
+    case "RESOLVED":
+      return { label: "Resolve", icon: CircleCheck, primary: true }
+    case "CLOSED":
+      return { label: "Close ticket", icon: CheckCheck, primary: true }
+    case "ON_HOLD":
+      return { label: "Put on hold", icon: Pause }
+    case "ASSIGNED":
+      return { label: "Mark assigned", icon: UserCheck }
+    case "CANCELLED":
+      return { label: "Cancel ticket", icon: Ban }
+    default:
+      return { label: STATUS_LABELS[to] || to, icon: Play }
+  }
+}
 
 type Watcher = { id: number; userId: number; name: string; email: string }
 
@@ -368,39 +408,51 @@ export function TicketDetailSheet({
 
             {canAgentAct ? (
               <div className="shrink-0 space-y-3 border-b bg-background p-4">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-muted-foreground text-[11px] font-medium tracking-wider uppercase">
-                    Actions
-                  </p>
-                  {!ticket.assigneeId ? (
-                    <Button
-                      size="sm"
-                      onClick={() => actionMutation.mutate({ action: "claim" })}
-                      disabled={actionMutation.isPending}
-                    >
-                      <UserPlus data-icon="inline-start" />
-                      Claim
-                    </Button>
-                  ) : null}
-                </div>
-
                 {nextStatuses.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {nextStatuses.map((status) => (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {nextStatuses
+                      .filter((st) => st !== "CANCELLED")
+                      .map((st) => {
+                        const a = statusAction(ticket.status, st)
+                        const Icon = a.icon
+                        return (
+                          <Button
+                            key={st}
+                            size="sm"
+                            variant={
+                              a.primary || pendingStatus === st ? "default" : "outline"
+                            }
+                            className="h-8"
+                            disabled={actionMutation.isPending}
+                            onClick={() => applyStatus(st)}
+                          >
+                            <Icon data-icon="inline-start" />
+                            {a.label}
+                          </Button>
+                        )
+                      })}
+                    {nextStatuses.includes("CANCELLED") ? (
                       <Button
-                        key={status}
                         size="sm"
-                        variant={pendingStatus === status ? "default" : "outline"}
-                        className="h-8"
+                        variant="ghost"
+                        className="text-muted-foreground hover:text-destructive ml-auto h-8"
                         disabled={actionMutation.isPending}
-                        onClick={() => applyStatus(status)}
+                        onClick={() => {
+                          if (window.confirm(`Cancel ${ticket.code}? This can't be undone.`)) {
+                            applyStatus("CANCELLED")
+                          }
+                        }}
                       >
-                        {STATUS_LABELS[status] || status}
+                        <Ban data-icon="inline-start" />
+                        Cancel ticket
                       </Button>
-                    ))}
+                    ) : null}
                   </div>
                 ) : (
-                  <p className="text-muted-foreground text-xs">No further status changes.</p>
+                  <p className="text-muted-foreground text-xs">
+                    This ticket is {STATUS_LABELS[ticket.status].toLowerCase()} — no further
+                    status changes.
+                  </p>
                 )}
 
                 {pendingStatus === "ON_HOLD" ? (
@@ -440,10 +492,9 @@ export function TicketDetailSheet({
                   </div>
                 ) : null}
 
-                <div className="space-y-1.5">
-                  <p className="text-muted-foreground text-[11px] font-medium tracking-wider uppercase">
-                    Reassign
-                  </p>
+                {!isTerminalStatus(ticket.status) ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground w-12 shrink-0 text-xs">Owner</span>
                   <NativeSelect
                     value={ticket.assigneeId?.toString() || ""}
                     onChange={(e) =>
@@ -460,7 +511,20 @@ export function TicketDetailSheet({
                       </option>
                     ))}
                   </NativeSelect>
+                  {ticket.assigneeId !== meId ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 shrink-0"
+                      onClick={() => actionMutation.mutate({ action: "claim" })}
+                      disabled={actionMutation.isPending}
+                    >
+                      <UserPlus data-icon="inline-start" />
+                      {ticket.assigneeId ? "Take over" : "Claim"}
+                    </Button>
+                  ) : null}
                 </div>
+                ) : null}
               </div>
             ) : null}
 

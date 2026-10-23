@@ -31,7 +31,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
-import { cn } from "@/lib/utils"
+import { cn, initials } from "@/lib/utils"
 
 export type InboxTab = "for-me" | "mine" | "queue"
 
@@ -53,13 +53,6 @@ export function SimpleShell({
   const { data } = useSession()
   const isAdmin = data?.user?.role === "ADMIN"
   const name = data?.user?.name || data?.user?.email || "User"
-  const initials =
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((p) => p[0]?.toUpperCase() ?? "")
-      .join("") || "U"
 
   const isInbox = Boolean(onTabChange)
 
@@ -193,7 +186,7 @@ export function SimpleShell({
         <SidebarFooter className="border-t border-sidebar-border/60">
           <div className="flex items-center gap-2 overflow-hidden rounded-lg px-1 py-1 group-data-[collapsible=icon]:justify-center">
             <Avatar className="size-8">
-              <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+              <AvatarFallback className="text-xs">{initials(name)}</AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
               <p className="truncate text-sm font-medium">{name}</p>
