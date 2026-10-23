@@ -33,7 +33,7 @@ Staff sign in with **username/employee number + password/NIC** (synced from Redi
 - **Ticket sheet** — claim, status, reassign, watch, internal notes, canned replies, links, @mentions
 - **Admin** — invites, departments, membership, ticket types, notify email, canned replies
 
-Shortcuts: `N` new ticket · `C` claim open ticket (when sheet is open)
+Shortcuts: `N` new ticket
 
 ## Cron jobs
 

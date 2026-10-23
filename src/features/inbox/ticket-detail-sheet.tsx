@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import {
   Ban,
   Bell,
+  Check,
   BellOff,
   CheckCheck,
   CircleCheck,
@@ -117,6 +118,8 @@ export function TicketDetailSheet({
   const [holdReason, setHoldReason] = useState("")
   const [pendingStatus, setPendingStatus] = useState<TicketStatus | null>(null)
   const [linkCode, setLinkCode] = useState("")
+  // Owner picked in the dropdown but not yet confirmed (tied to the ticket it was picked on).
+  const [pendingOwner, setPendingOwner] = useState<{ code: string; value: string } | null>(null)
   const [mentionQ, setMentionQ] = useState("")
   const [showMentions, setShowMentions] = useState(false)
 
@@ -287,6 +290,11 @@ export function TicketDetailSheet({
     },
     onError: (err: Error) => toast.error(err.message),
   })
+
+  const currentOwner = ticket?.assigneeId?.toString() || ""
+  const ownerValue =
+    pendingOwner && pendingOwner.code === ticket?.code ? pendingOwner.value : currentOwner
+  const ownerChanged = ownerValue !== currentOwner
 
   function applyStatus(status: TicketStatus) {
     if (status === "ON_HOLD") {
@@ -508,13 +516,8 @@ export function TicketDetailSheet({
                 <div className="flex items-center gap-2">
                   <span className="text-muted-foreground w-12 shrink-0 text-xs">Owner</span>
                   <NativeSelect
-                    value={ticket.assigneeId?.toString() || ""}
-                    onChange={(e) =>
-                      actionMutation.mutate({
-                        action: "assign",
-                        assigneeId: e.target.value ? Number(e.target.value) : null,
-                      })
-                    }
+                    value={ownerValue}
+                    onChange={(e) => setPendingOwner({ code: ticket.code, value: e.target.value })}
                   >
                     <option value="">Unassigned</option>
                     {(membersQuery.data || []).map((m) => (
@@ -523,7 +526,35 @@ export function TicketDetailSheet({
                       </option>
                     ))}
                   </NativeSelect>
-                  {ticket.assigneeId !== meId ? (
+                  {ownerChanged ? (
+                    <>
+                      <Button
+                        size="sm"
+                        className="h-8 shrink-0"
+                        disabled={actionMutation.isPending}
+                        onClick={() =>
+                          actionMutation.mutate(
+                            {
+                              action: "assign",
+                              assigneeId: ownerValue ? Number(ownerValue) : null,
+                            },
+                            { onSuccess: () => setPendingOwner(null) }
+                          )
+                        }
+                      >
+                        <Check data-icon="inline-start" />
+                        Confirm
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 shrink-0"
+                        onClick={() => setPendingOwner(null)}
+                      >
+                        Cancel
+                      </Button>
+                    </>
+                  ) : ticket.assigneeId !== meId ? (
                     <Button
                       size="sm"
                       variant="outline"

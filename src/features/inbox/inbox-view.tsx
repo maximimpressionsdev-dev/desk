@@ -80,23 +80,24 @@ export function InboxView() {
     if (tabParam && tabParam in TAB_META) setTab(tabParam)
   }, [searchParams])
 
+  // N opens a new ticket. There is deliberately no claim shortcut: a stray key
+  // (or Ctrl+C while copying) must never assign a ticket.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      const tag = (e.target as HTMLElement)?.tagName
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      const target = e.target as HTMLElement | null
+      const tag = target?.tagName
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target?.isContentEditable) {
+        return
+      }
       if (e.key === "n" || e.key === "N") {
         e.preventDefault()
         setCreateOpen(true)
       }
-      if ((e.key === "c" || e.key === "C") && selectedCode && sheetOpen) {
-        e.preventDefault()
-        claimMutation.mutate(selectedCode)
-      }
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCode, sheetOpen])
+  }, [])
 
   const scope = TAB_META[tab].scope
   const status = statusOverride ?? ACTIVE_STATUS

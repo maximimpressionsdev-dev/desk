@@ -171,9 +171,9 @@ export const TOUR_FLOWS: Array<{
         titleEn: "Claim or assign",
         titleSi: "ටිකට් භාරගන්න හෝ පවරන්න",
         bodyEn:
-          "Press Claim on the queue row, or open the ticket and press Claim next to Owner. To give it to someone else, pick them in the Owner dropdown.",
+          "Press Claim on the queue row, or open the ticket and press Claim next to Owner. To give it to someone else, pick them in the Owner dropdown and press Confirm.",
         bodySi:
-          "Queue පේළියේ ඇති Claim ඔබන්න, නැතහොත් ටිකට් එක විවෘත කර Owner අසල ඇති Claim ඔබන්න. වෙනත් නියෝජිතයෙකුට පැවරීමට Owner dropdown එකෙන් ඔවුන් තෝරන්න.",
+          "Queue පේළියේ ඇති Claim ඔබන්න, නැතහොත් ටිකට් එක විවෘත කර Owner අසල ඇති Claim ඔබන්න. වෙනත් නියෝජිතයෙකුට පැවරීමට Owner dropdown එකෙන් ඔවුන් තෝරා Confirm ඔබන්න.",
       },
       {
         id: "5",

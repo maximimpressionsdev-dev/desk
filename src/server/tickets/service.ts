@@ -387,6 +387,9 @@ export async function assignTicket(input: {
     ticket,
   })
 
+  // Re-assigning to the current owner is a no-op: no event, no emails.
+  if ((input.assigneeId ?? null) === (ticket.assigneeId ?? null)) return ticket
+
   if (input.assigneeId) {
     const [assignee] = await db
       .select()
