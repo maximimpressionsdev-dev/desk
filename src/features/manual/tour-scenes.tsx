@@ -307,7 +307,7 @@ function LoginScene(_props: { highlights: TourHighlight[] }) {
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label>Username or employee number</Label>
-              <Input readOnly value="EMP-1042" />
+              <Input readOnly value="1042" />
             </div>
             <div className="space-y-1.5">
               <Label>Password or ID number</Label>
@@ -342,7 +342,7 @@ function ResetHelpScene({ highlights }: { highlights: TourHighlight[] }) {
         <CardContent className="space-y-4">
           <div className="space-y-1.5">
             <Label>Employee Number</Label>
-            <Input readOnly value="EMP-1042" />
+            <Input readOnly value="1042" />
           </div>
           <div className="space-y-1.5">
             <Label>Email (optional)</Label>
