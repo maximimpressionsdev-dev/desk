@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { signOut, useSession } from "next-auth/react"
 import {
+  BookOpen,
   ClipboardList,
   Inbox,
   LayoutList,
@@ -15,25 +16,26 @@ import { ThemeToggle } from "@/components/shared/theme-toggle"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarInset,
-  SidebarMenu,
-  SidebarMenuBadge,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-  SidebarRail,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
-import { Separator } from "@/components/ui/separator"
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { cn, initials } from "@/lib/utils"
 
 export type InboxTab = "for-me" | "mine" | "queue"
+
+const NAV = [
+  { id: "for-me" as const, label: "For me", icon: ClipboardList, hint: "Assigned to you" },
+  { id: "mine" as const, label: "My Tickets", icon: Inbox, hint: "Tickets you filed" },
+  { id: "queue" as const, label: "Queue", icon: LayoutList, hint: "Department work" },
+]
+
+const navItemClass =
+  "relative inline-flex h-11 shrink-0 items-center gap-2 px-3 text-sm font-medium transition-colors after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full"
 
 export function SimpleShell({
   children,
@@ -54,182 +56,150 @@ export function SimpleShell({
   const isAdmin = data?.user?.role === "ADMIN"
   const name = data?.user?.name || data?.user?.email || "User"
 
-  const isInbox = Boolean(onTabChange)
-
-  const nav = [
-    { id: "for-me" as const, label: "For me", icon: ClipboardList, hint: "Assigned to you" },
-    { id: "mine" as const, label: "My Tickets", icon: Inbox, hint: "Tickets you filed" },
-    { id: "queue" as const, label: "Queue", icon: LayoutList, hint: "Department work" },
-  ]
+  const navItems = (
+    <>
+      {NAV.map((item) => {
+        const Icon = item.icon
+        const active = activeTab === item.id
+        const count = counts?.[item.id]
+        const content = (
+          <>
+            <Icon className="size-4" />
+            <span>{item.label}</span>
+            {typeof count === "number" ? (
+              <span
+                className={cn(
+                  "rounded-full px-1.5 py-px text-[11px] tabular-nums",
+                  active ? "bg-foreground text-background" : "bg-muted text-muted-foreground"
+                )}
+              >
+                {count}
+              </span>
+            ) : null}
+          </>
+        )
+        const className = cn(
+          navItemClass,
+          active
+            ? "text-foreground after:bg-foreground"
+            : "text-muted-foreground hover:text-foreground"
+        )
+        // Inside the inbox, tabs switch in place; elsewhere they link back to it.
+        return onTabChange ? (
+          <button
+            key={item.id}
+            type="button"
+            title={item.hint}
+            aria-current={active ? "page" : undefined}
+            className={className}
+            onClick={() => onTabChange(item.id)}
+          >
+            {content}
+          </button>
+        ) : (
+          <Link key={item.id} href={`/?tab=${item.id}`} title={item.hint} className={className}>
+            {content}
+          </Link>
+        )
+      })}
+      {isAdmin ? (
+        <Link
+          href="/admin"
+          title="Users & departments"
+          aria-current={title === "Admin" ? "page" : undefined}
+          className={cn(
+            navItemClass,
+            title === "Admin"
+              ? "text-foreground after:bg-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Settings2 className="size-4" />
+          <span>Admin</span>
+        </Link>
+      ) : null}
+    </>
+  )
 
   return (
-    <SidebarProvider defaultOpen>
-      <Sidebar
-        collapsible="icon"
-        className="border-border/40 bg-sidebar/95 border-r backdrop-blur"
-      >
-        <SidebarHeader className="gap-3 border-b border-sidebar-border/60 p-3">
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                size="lg"
-                render={
-                  <Link href="/">
-                    <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                      <Ticket className="size-4" />
-                    </div>
-                    <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold">Tickets</span>
-                      <span className="text-muted-foreground truncate text-xs">Quick desk</span>
-                    </div>
-                  </Link>
-                }
-              />
-            </SidebarMenuItem>
-          </SidebarMenu>
-          {onNewTicket ? (
-            <Button
-              size="lg"
-              className={cn(
-                "h-10 w-full justify-start gap-2 shadow-sm",
-                "group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:shadow-none"
-              )}
-              onClick={onNewTicket}
-              title="New ticket (N)"
-            >
-              <Plus className="size-4" />
-              <span className="flex-1 text-left group-data-[collapsible=icon]:hidden">
-                New ticket
-              </span>
-              <kbd className="bg-primary-foreground/15 text-primary-foreground/80 pointer-events-none hidden rounded px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-wide group-data-[collapsible=icon]:hidden md:inline">
-                N
-              </kbd>
-            </Button>
-          ) : (
-            <Button
-              size="lg"
-              variant="outline"
-              className={cn(
-                "h-10 w-full justify-start gap-2",
-                "group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:p-0"
-              )}
-              render={<Link href="/" />}
-            >
-              <Inbox className="size-4" />
-              <span className="group-data-[collapsible=icon]:hidden">Back to inbox</span>
-            </Button>
-          )}
-        </SidebarHeader>
-
-        <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupLabel>Views</SidebarGroupLabel>
-            <SidebarMenu>
-              {isInbox
-                ? nav.map((item) => {
-                    const Icon = item.icon
-                    const active = activeTab === item.id
-                    const count = counts?.[item.id]
-                    return (
-                      <SidebarMenuItem key={item.id}>
-                        <SidebarMenuButton
-                          isActive={active}
-                          tooltip={item.hint}
-                          onClick={() => onTabChange?.(item.id)}
-                        >
-                          <Icon />
-                          <span>{item.label}</span>
-                        </SidebarMenuButton>
-                        {typeof count === "number" ? (
-                          <SidebarMenuBadge
-                            className={cn(
-                              !active && "text-muted-foreground",
-                              count === 0 && "opacity-50"
-                            )}
-                          >
-                            {count}
-                          </SidebarMenuBadge>
-                        ) : null}
-                      </SidebarMenuItem>
-                    )
-                  })
-                : (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton isActive={false} render={<Link href="/" />}>
-                      <Inbox />
-                      <span>Inbox</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )}
-            </SidebarMenu>
-          </SidebarGroup>
-
-          {isAdmin ? (
-            <SidebarGroup>
-              <SidebarGroupLabel>Manage</SidebarGroupLabel>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    isActive={title === "Admin"}
-                    tooltip="Users & departments"
-                    render={<Link href="/admin" />}
-                  >
-                    <Settings2 />
-                    <span>Admin</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroup>
-          ) : null}
-        </SidebarContent>
-
-        <SidebarFooter className="border-t border-sidebar-border/60">
-          <div className="flex items-center gap-2 overflow-hidden rounded-lg px-1 py-1 group-data-[collapsible=icon]:justify-center">
-            <Avatar className="size-8">
-              <AvatarFallback className="text-xs">{initials(name)}</AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-              <p className="truncate text-sm font-medium">{name}</p>
-              <p className="text-muted-foreground truncate text-xs">{data?.user?.email}</p>
+    <div className="bg-background flex min-h-svh flex-col">
+      <header className="bg-background/95 supports-[backdrop-filter]:bg-background/70 sticky top-0 z-20 border-b backdrop-blur">
+        <div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-4 px-4 md:px-6">
+          <Link href="/" className="flex shrink-0 items-center gap-2.5">
+            <div className="bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-lg">
+              <Ticket className="size-4" />
             </div>
-            <div className="flex items-center gap-0.5 group-data-[collapsible=icon]:hidden">
-              <ThemeToggle />
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="text-muted-foreground"
-                onClick={() => signOut({ callbackUrl: "/login" })}
-                title="Sign out"
-              >
-                <LogOut className="size-4" />
+            <span className="hidden text-sm leading-tight font-semibold sm:block">Tickets</span>
+          </Link>
+
+          <nav aria-label="Main" className="hidden items-center self-stretch md:flex [&>*]:h-full">
+            {navItems}
+          </nav>
+
+          <div className="ml-auto flex items-center gap-1.5">
+            {onNewTicket ? (
+              <Button size="sm" className="h-8 gap-1.5" onClick={onNewTicket} title="New ticket (N)">
+                <Plus className="size-4" />
+                <span className="hidden sm:inline">New ticket</span>
+                <kbd className="bg-primary-foreground/15 text-primary-foreground/80 pointer-events-none hidden rounded px-1.5 py-px font-mono text-[10px] font-medium lg:inline">
+                  N
+                </kbd>
               </Button>
-            </div>
+            ) : null}
+            <ThemeToggle />
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <button
+                    type="button"
+                    aria-label="Account"
+                    className="focus-visible:ring-ring/50 rounded-full outline-none focus-visible:ring-3"
+                  />
+                }
+              >
+                <Avatar className="size-8">
+                  <AvatarFallback className="text-xs">{initials(name)}</AvatarFallback>
+                </Avatar>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className="text-foreground px-2 py-1.5">
+                    <p className="truncate text-sm font-medium">{name}</p>
+                    {data?.user?.email ? (
+                      <p className="text-muted-foreground truncate text-xs font-normal">
+                        {data.user.email}
+                      </p>
+                    ) : null}
+                  </DropdownMenuLabel>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem render={<Link href="/manual" />}>
+                  <BookOpen />
+                  User manual
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={() => signOut({ callbackUrl: "/login" })}
+                >
+                  <LogOut />
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-        </SidebarFooter>
-        <SidebarRail />
-      </Sidebar>
+        </div>
 
-      <SidebarInset className="min-w-0">
-        <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b px-4 backdrop-blur">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-1 h-4" />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{title}</p>
-          </div>
-          {onNewTicket ? (
-            <Button
-              size="sm"
-              className="h-8 gap-1.5 shadow-sm md:hidden"
-              onClick={onNewTicket}
-              title="New ticket (N)"
-            >
-              <Plus className="size-3.5" />
-              New ticket
-            </Button>
-          ) : null}
-        </header>
-        <main className="flex-1 p-4 md:p-6">{children}</main>
-      </SidebarInset>
-    </SidebarProvider>
+        <nav
+          aria-label="Main"
+          className="flex overflow-x-auto border-t px-1 [scrollbar-width:none] md:hidden"
+        >
+          {navItems}
+        </nav>
+      </header>
+
+      <main className="flex-1 px-4 py-5 md:px-6 md:py-6">
+        <div className="mx-auto w-full max-w-7xl">{children}</div>
+      </main>
+    </div>
   )
 }

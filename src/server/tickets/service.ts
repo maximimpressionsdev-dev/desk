@@ -289,8 +289,8 @@ export async function createTicket(input: {
     message: `Ticket created and sent to ${department.name}`,
   })
 
-  const memberEmails = await db
-    .select({ email: users.email })
+  const members = await db
+    .select({ id: users.id, email: users.email, phone: users.phone })
     .from(departmentMembers)
     .innerJoin(users, eq(departmentMembers.userId, users.id))
     .where(
@@ -303,7 +303,7 @@ export async function createTicket(input: {
   const recipients = [
     ...new Set(
       [
-        ...memberEmails.map((m) => m.email),
+        ...members.map((m) => m.email),
         department.notifyEmail,
       ].filter(Boolean) as string[]
     ),
@@ -338,6 +338,18 @@ export async function createTicket(input: {
       ]
         .filter(Boolean)
         .join("\n"),
+    })
+  }
+
+  // Same short format as the resolve SMS; the requester filed it, so they're skipped.
+  const memberPhones = [
+    ...new Set(members.filter((m) => m.id !== requester.id).map((m) => m.phone || "")),
+  ]
+  if (memberPhones.some(Boolean)) {
+    const url = `${appBaseUrl()}/tickets/${code}`.trim()
+    await sendSms({
+      to: memberPhones,
+      text: `Desk: New ticket ${code} from ${requester.name} — ${created.title}${url ? ` ${url}` : ""}`,
     })
   }
 
