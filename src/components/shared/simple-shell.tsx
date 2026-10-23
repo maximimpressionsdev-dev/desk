@@ -12,7 +12,6 @@ import {
   Settings2,
   Ticket,
 } from "lucide-react"
-import { ThemeToggle } from "@/components/shared/theme-toggle"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
@@ -146,7 +145,6 @@ export function SimpleShell({
                 </kbd>
               </Button>
             ) : null}
-            <ThemeToggle />
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={

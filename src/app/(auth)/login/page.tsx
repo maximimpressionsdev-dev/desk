@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ThemeToggle } from "@/components/shared/theme-toggle"
 
 function safeNextPath(raw: string | null) {
   if (!raw) return "/"
@@ -107,9 +106,6 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <div className="bg-background relative flex min-h-screen items-center justify-center px-4">
-      <div className="absolute top-4 right-4">
-        <ThemeToggle />
-      </div>
       <Suspense fallback={<div className="text-muted-foreground text-sm">Loading…</div>}>
         <LoginForm />
       </Suspense>

@@ -4,7 +4,6 @@ import Link from "next/link"
 import { motion, useReducedMotion } from "motion/react"
 import { ArrowLeft, PlayCircle, Ticket } from "lucide-react"
 import { ManualTour } from "@/features/manual/manual-tour"
-import { ThemeToggle } from "@/components/shared/theme-toggle"
 import { Button } from "@/components/ui/button"
 
 export function ManualView() {
@@ -26,7 +25,6 @@ export function ManualView() {
             <p className="truncate text-sm font-semibold tracking-tight">support-desk පරිශීලක අත්පොත</p>
             <p className="text-muted-foreground truncate text-[11px]">User manual · Interactive tour</p>
           </div>
-          <ThemeToggle />
           <Button size="sm" variant="outline" render={<Link href="/login" />}>
             <ArrowLeft className="size-3.5" />
             Sign in

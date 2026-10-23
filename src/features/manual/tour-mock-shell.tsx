@@ -9,7 +9,6 @@ import {
   Plus,
   Ticket,
 } from "lucide-react"
-import { ThemeToggle } from "@/components/shared/theme-toggle"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -148,7 +147,6 @@ export function TourMockShell({
                 <p className="text-muted-foreground truncate text-xs">jane@maximimpressions.com</p>
               </div>
               <div className="flex items-center gap-0.5">
-                <ThemeToggle />
                 <Button variant="ghost" size="icon-sm" className="text-muted-foreground pointer-events-none">
                   <LogOut className="size-4" />
                 </Button>

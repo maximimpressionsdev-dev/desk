@@ -5,7 +5,6 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/shared/app-sidebar"
-import { ThemeToggle } from "@/components/shared/theme-toggle"
 import { Separator } from "@/components/ui/separator"
 import {
   Breadcrumb,
@@ -70,7 +69,6 @@ export function AppShell({
               </BreadcrumbList>
             </Breadcrumb>
           </div>
-          <ThemeToggle />
         </header>
         <main className="animate-in fade-in slide-in-from-bottom-2 flex flex-1 flex-col gap-4 p-4 duration-500 md:p-8">
           {children}
