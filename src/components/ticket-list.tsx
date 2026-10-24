@@ -15,6 +15,7 @@ export type TicketListItem = {
   priority: string
   status: string
   departmentName: string
+  applicationName?: string | null
   requesterName: string
   assigneeName: string | null
   dueAt: string | null

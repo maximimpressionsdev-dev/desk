@@ -50,6 +50,7 @@ export async function GET(_req: Request, { params }: Params) {
         issueCategoryNameSi: detail.issueCategoryNameSi,
         issueReasonNameEn: detail.issueReasonNameEn,
         issueReasonNameSi: detail.issueReasonNameSi,
+        applicationName: detail.applicationName,
       },
       ...timeline,
       watchers,

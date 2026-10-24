@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server"
 import { jsonError, requireAdmin } from "@/server/auth/guards"
-import { redisConfigured } from "@/server/redis/client"
-import { syncDirectoryFromRedis } from "@/server/redis/sync"
+import { erpConfigured } from "@/server/erp/frappe"
+import { syncDirectoryFromErp } from "@/server/erp/directory"
 
+// Admin: refresh staff and departments from the ERP
 export async function POST() {
   try {
     await requireAdmin()
-    if (!redisConfigured()) {
-      return NextResponse.json({ error: "Redis is not configured" }, { status: 400 })
+    if (!erpConfigured()) {
+      return NextResponse.json({ error: "The ERP connection isn't set up (FRAPPE_URL, FRAPPE_API_KEY, FRAPPE_API_SECRET)." }, { status: 400 })
     }
-    const result = await syncDirectoryFromRedis()
-    return NextResponse.json({ ok: true, ...result })
+    return NextResponse.json({ ok: true, ...(await syncDirectoryFromErp()) })
   } catch (error) {
     return jsonError(error)
   }

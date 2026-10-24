@@ -147,13 +147,18 @@ async function runCron(req: Request) {
   }
 
   if (job === "sync") {
-    const { redisConfigured } = await import("@/server/redis/client")
-    if (!redisConfigured()) {
-      return NextResponse.json({ error: "Redis is not configured" }, { status: 400 })
+    const { erpConfigured } = await import("@/server/erp/frappe")
+    if (!erpConfigured()) {
+      return NextResponse.json({ error: "The ERP connection isn't set up" }, { status: 400 })
     }
-    const { syncDirectoryFromRedis } = await import("@/server/redis/sync")
-    const result = await syncDirectoryFromRedis()
-    return NextResponse.json({ job: "sync", ...result })
+    const { syncDirectoryFromErp } = await import("@/server/erp/directory")
+    return NextResponse.json({ job: "sync", ...(await syncDirectoryFromErp()) })
+  }
+
+  if (job === "apps") {
+    const { syncApplications } = await import("@/server/erp/applications")
+    const result = await syncApplications()
+    return NextResponse.json({ job: "apps", ...result })
   }
 
   if (job === "backup") {

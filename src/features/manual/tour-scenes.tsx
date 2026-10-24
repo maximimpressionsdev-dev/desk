@@ -187,7 +187,7 @@ function NewTicketDialogMock({ highlights }: { highlights: TourHighlight[] }) {
                   key={label}
                   className={cn(
                     "flex items-center justify-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium sm:text-sm",
-                    label === "Medium" ? "bg-background shadow-sm" : "text-muted-foreground"
+                    label === "Medium" ? "bg-background" : "text-muted-foreground"
                   )}
                 >
                   <span className={cn("size-1.5 rounded-full", dot)} />
@@ -256,7 +256,7 @@ function InboxMain({
                 key={t}
                 className={cn(
                   "rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap",
-                  t === "Active" ? "bg-background shadow-sm" : "text-muted-foreground"
+                  t === "Active" ? "bg-background" : "text-muted-foreground"
                 )}
               >
                 {t}

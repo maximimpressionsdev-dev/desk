@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { toast } from "sonner"
+import { toast } from "@/lib/notice"
 import { api } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"

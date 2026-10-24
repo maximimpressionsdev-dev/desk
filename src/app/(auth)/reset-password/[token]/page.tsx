@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { toast } from "sonner"
+import { toast } from "@/lib/notice"
 import { api } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,10 +20,10 @@ export default function ResetPasswordTokenPage() {
     setLoading(true)
     try {
       await api.post("/api/auth/password-reset?action=reset", { token, password })
-      toast.success("Password updated")
+      toast.success("Your password was updated")
       router.push("/login")
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed")
+      toast.error(err instanceof Error ? err.message : "Something went wrong, please try again")
     } finally {
       setLoading(false)
     }

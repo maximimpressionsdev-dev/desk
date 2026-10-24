@@ -6,14 +6,14 @@ import {
   BookOpen,
   ClipboardList,
   Inbox,
+  LayoutGrid,
   LayoutList,
+  LifeBuoy,
   LogOut,
   Plus,
   Settings2,
-  Ticket,
+  User,
 } from "lucide-react"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,7 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { cn, initials } from "@/lib/utils"
+import { cn } from "@/lib/utils"
 
 export type InboxTab = "for-me" | "mine" | "queue"
 
@@ -33,8 +33,37 @@ const NAV = [
   { id: "queue" as const, label: "Queue", icon: LayoutList, hint: "Department work" },
 ]
 
+// Same look as the FactoryOS app header: tabs as quiet pills, the active one on the muted grey
 const navItemClass =
-  "relative inline-flex h-12 shrink-0 items-center gap-1.5 px-2.5 text-sm font-medium sm:gap-2.5 sm:px-4 transition-colors after:absolute after:inset-x-4 after:bottom-0 after:h-0.5 after:rounded-full"
+  "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl px-3 py-2 text-sm transition-colors"
+
+// Where the FactoryOS mark goes: the dock's App Desk
+const FACTORYOS_URL = process.env.NEXT_PUBLIC_FACTORYOS_URL || "https://factoryos.maximimpressions.com"
+
+const headerButtonClass =
+  "inline-flex h-9 items-center justify-center gap-1.5 rounded-xl px-2.5 text-[15px] font-normal tracking-tight transition-colors"
+
+// "THARUKA SOORIYAARACHCHI" -> "Tharuka"
+function firstName(name: string) {
+  const first = name.trim().split(/\s+/)[0] ?? ""
+  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase()
+}
+
+/** The FactoryOS mark: four tiles, one dimmed; back to the dock */
+function FactoryOSMark() {
+  return (
+    <a
+      href={FACTORYOS_URL}
+      title="Back to FactoryOS"
+      aria-label="Back to FactoryOS"
+      className="bg-foreground grid size-9 shrink-0 grid-cols-2 gap-1 rounded-xl p-2 shadow-md transition-transform duration-300 hover:-translate-y-0.5 hover:shadow-lg"
+    >
+      {[0, 1, 2, 3].map((i) => (
+        <span key={i} className={cn("bg-background rounded-[3px]", i === 1 && "opacity-45")} />
+      ))}
+    </a>
+  )
+}
 
 export function SimpleShell({
   children,
@@ -64,7 +93,7 @@ export function SimpleShell({
         const content = (
           <>
             <Icon className="hidden size-4 sm:block" />
-            <span className="whitespace-nowrap">{item.label}</span>
+            <span>{item.label}</span>
             {typeof count === "number" ? (
               <span
                 className={cn(
@@ -80,8 +109,8 @@ export function SimpleShell({
         const className = cn(
           navItemClass,
           active
-            ? "text-foreground after:bg-foreground"
-            : "text-muted-foreground hover:text-foreground"
+            ? "bg-muted text-foreground font-medium"
+            : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
         )
         // Inside the inbox, tabs switch in place; elsewhere they link back to it.
         return onTabChange ? (
@@ -109,8 +138,8 @@ export function SimpleShell({
           className={cn(
             navItemClass,
             title === "Admin"
-              ? "text-foreground after:bg-foreground"
-              : "text-muted-foreground hover:text-foreground"
+              ? "bg-muted text-foreground font-medium"
+              : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
           )}
         >
           <Settings2 className="hidden size-4 sm:block" />
@@ -121,52 +150,67 @@ export function SimpleShell({
   )
 
   return (
-    <div className="bg-background flex min-h-svh flex-col">
-      <header className="bg-background/95 supports-[backdrop-filter]:bg-background/70 sticky top-0 z-20 border-b backdrop-blur">
-        <div className="mx-auto grid h-16 w-full max-w-7xl 2xl:max-w-[1600px] min-[2200px]:max-w-[1920px] grid-cols-[1fr_auto] items-center gap-4 px-4 md:px-6 lg:grid-cols-[1fr_auto_1fr] 2xl:px-8">
-          <Link href="/" className="flex shrink-0 items-center gap-2.5 justify-self-start">
-            <div className="bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-lg">
-              <Ticket className="size-4" />
-            </div>
-            <span className="hidden text-sm leading-tight font-semibold sm:block">Tickets</span>
-          </Link>
+    <div className="bg-background flex min-h-svh flex-col font-sans">
+      <header className="bg-background/80 sticky top-0 z-30 border-b backdrop-blur-md">
+        <div className="relative mx-auto flex h-16 max-w-[96rem] items-center gap-4 px-4 sm:px-6">
+          <div className="flex shrink-0 items-center gap-3">
+            <FactoryOSMark />
+            <Link href="/" className="text-foreground text-[15px] font-semibold tracking-tight">
+              FactoryOS <span className="text-muted-foreground hidden font-normal sm:inline">Support Desk</span>
+            </Link>
+          </div>
+          <span aria-hidden className="bg-foreground/20 hidden h-6 w-px shrink-0 lg:block" />
 
-          <nav aria-label="Main" className="hidden items-center gap-1 self-stretch lg:flex [&>*]:h-full">
+          {/* Centred in the bar on wide screens; a row of its own below on smaller ones */}
+          <nav aria-label="Main" className="hidden items-center gap-1 lg:absolute lg:left-1/2 lg:flex lg:-translate-x-1/2">
             {navItems}
           </nav>
 
-          <div className="flex items-center gap-2 justify-self-end">
+          <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
             {onNewTicket ? (
-              <Button className="h-9 gap-1.5 px-3.5" onClick={onNewTicket} title="New ticket (N)">
+              <button
+                type="button"
+                onClick={onNewTicket}
+                title="New ticket (N)"
+                className={cn(headerButtonClass, "bg-primary text-primary-foreground hover:opacity-85")}
+              >
                 <Plus className="size-4" />
-                <span className="hidden sm:inline">New ticket</span>
-                <kbd className="bg-primary-foreground/15 text-primary-foreground/80 pointer-events-none hidden rounded px-1.5 py-px font-mono text-[10px] font-medium lg:inline">
-                  N
-                </kbd>
-              </Button>
+                <span className="hidden sm:inline">New Ticket</span>
+              </button>
             ) : null}
+            <Link
+              href="/manual"
+              title="How the support desk works"
+              className={cn(
+                headerButtonClass,
+                "bg-violet-500/10 text-violet-600 hover:bg-violet-500/20 hover:text-violet-700"
+              )}
+            >
+              <LifeBuoy className="size-4" />
+              <span className="hidden sm:inline">Help?</span>
+            </Link>
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
                   <button
                     type="button"
                     aria-label="Account"
-                    className="focus-visible:ring-ring/50 rounded-full outline-none focus-visible:ring-3"
+                    className={cn(
+                      headerButtonClass,
+                      "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground outline-none"
+                    )}
                   />
                 }
               >
-                <Avatar className="size-8">
-                  <AvatarFallback className="text-xs">{initials(name)}</AvatarFallback>
-                </Avatar>
+                <User className="size-4" />
+                <span className="hidden max-w-[140px] truncate sm:inline">{firstName(name)}</span>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuContent align="end" className="w-60">
                 <DropdownMenuGroup>
                   <DropdownMenuLabel className="text-foreground px-2 py-1.5">
                     <p className="truncate text-sm font-medium">{name}</p>
                     {data?.user?.email ? (
-                      <p className="text-muted-foreground truncate text-xs font-normal">
-                        {data.user.email}
-                      </p>
+                      <p className="text-muted-foreground truncate text-xs font-normal">{data.user.email}</p>
                     ) : null}
                   </DropdownMenuLabel>
                 </DropdownMenuGroup>
@@ -175,10 +219,11 @@ export function SimpleShell({
                   <BookOpen />
                   User manual
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  variant="destructive"
-                  onClick={() => signOut({ callbackUrl: "/login" })}
-                >
+                <DropdownMenuItem render={<a href={FACTORYOS_URL} />}>
+                  <LayoutGrid />
+                  FactoryOS apps
+                </DropdownMenuItem>
+                <DropdownMenuItem variant="destructive" onClick={() => signOut({ callbackUrl: "/login" })}>
                   <LogOut />
                   Sign out
                 </DropdownMenuItem>
@@ -187,16 +232,13 @@ export function SimpleShell({
           </div>
         </div>
 
-        <nav
-          aria-label="Main"
-          className="flex overflow-x-auto border-t px-1 [scrollbar-width:none] sm:px-3 md:px-5 lg:hidden"
-        >
+        <nav aria-label="Main" className="flex gap-1 overflow-x-auto border-t px-3 py-2 [scrollbar-width:none] sm:px-5 lg:hidden">
           {navItems}
         </nav>
       </header>
 
-      <main className="flex-1 px-4 py-5 md:px-6 md:py-6 2xl:px-8 2xl:py-8">
-        <div className="mx-auto w-full max-w-7xl 2xl:max-w-[1600px] min-[2200px]:max-w-[1920px]">{children}</div>
+      <main className="flex-1">
+        <div className="mx-auto w-full max-w-[96rem] px-4 py-8 sm:px-6">{children}</div>
       </main>
     </div>
   )

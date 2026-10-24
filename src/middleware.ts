@@ -37,7 +37,9 @@ export async function middleware(req: NextRequest) {
     }
     const url = req.nextUrl.clone()
     url.pathname = "/login"
-    url.searchParams.set("callbackUrl", pathname)
+    // Keep the query too: a FactoryOS Help link (/?new=1&app=...) must survive the login
+    url.search = ""
+    url.searchParams.set("callbackUrl", `${pathname}${req.nextUrl.search}`)
     return NextResponse.redirect(url)
   }
 

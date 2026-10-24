@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { toast } from "sonner"
+import { toast } from "@/lib/notice"
 import { api } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -21,10 +21,10 @@ export default function InviteAcceptPage() {
     setLoading(true)
     try {
       await api.post("/api/auth/accept-invite", { token, name, password })
-      toast.success("Account created — sign in")
+      toast.success("Your account was created, please sign in")
       router.push("/login")
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed")
+      toast.error(err instanceof Error ? err.message : "Something went wrong, please try again")
     } finally {
       setLoading(false)
     }

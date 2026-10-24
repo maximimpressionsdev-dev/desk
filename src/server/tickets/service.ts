@@ -1,6 +1,7 @@
 import { and, desc, eq, inArray, lt, sql } from "drizzle-orm"
 import { db } from "@/server/db"
 import {
+  applications,
   attachments,
   departmentMembers,
   departments,
@@ -11,8 +12,8 @@ import {
   ticketTypes,
   ticketWatchers,
   tickets,
-  users,
   type TicketStatus,
+  users,
 } from "@/server/db/schema"
 import { ApiError, isDepartmentAgent } from "@/server/auth/guards"
 import { allowedNextStatuses, STATUS_LABELS, type TicketPriority } from "@/lib/ticket-constants"
@@ -61,6 +62,7 @@ export async function getTicketByCode(code: string) {
       issueCategoryNameSi: issueCategories.nameSi,
       issueReasonNameEn: issueReasons.nameEn,
       issueReasonNameSi: issueReasons.nameSi,
+      applicationName: applications.name,
     })
     .from(tickets)
     .innerJoin(departments, eq(tickets.departmentId, departments.id))
@@ -68,6 +70,7 @@ export async function getTicketByCode(code: string) {
     .leftJoin(ticketTypes, eq(tickets.ticketTypeId, ticketTypes.id))
     .leftJoin(issueCategories, eq(tickets.issueCategoryId, issueCategories.id))
     .leftJoin(issueReasons, eq(tickets.issueReasonId, issueReasons.id))
+    .leftJoin(applications, eq(tickets.applicationId, applications.id))
     .where(eq(tickets.code, code))
     .limit(1)
 
@@ -179,6 +182,7 @@ export async function listTicketsForUser(opts: {
       status: tickets.status,
       departmentId: tickets.departmentId,
       departmentName: departments.name,
+      applicationName: applications.name,
       requesterId: tickets.requesterId,
       requesterName: users.name,
       assigneeId: tickets.assigneeId,
@@ -191,6 +195,7 @@ export async function listTicketsForUser(opts: {
     .from(tickets)
     .innerJoin(departments, eq(tickets.departmentId, departments.id))
     .innerJoin(users, eq(tickets.requesterId, users.id))
+    .leftJoin(applications, eq(tickets.applicationId, applications.id))
     .where(where)
     .orderBy(desc(tickets.updatedAt))
     .limit(200)
@@ -217,6 +222,7 @@ export async function createTicket(input: {
   ticketTypeId?: number | null
   issueCategoryId?: number | null
   issueReasonId?: number | null
+  applicationId?: number | null
   title?: string
   description?: string
   priority?: TicketPriority
@@ -252,14 +258,27 @@ export async function createTicket(input: {
     issueReasonId: input.issueReasonId,
   })
 
-  const title =
+  let application: { id: number; name: string } | null = null
+  if (input.applicationId) {
+    const [app] = await db
+      .select({ id: applications.id, name: applications.name })
+      .from(applications)
+      .where(and(eq(applications.id, input.applicationId), eq(applications.active, true)))
+      .limit(1)
+    if (!app) throw new ApiError(400, "That application is no longer listed")
+    application = app
+  }
+
+  const issueTitle =
     input.title?.trim() ||
     (issueCategory && issueReason
       ? `${issueCategory.nameEn} — ${issueReason.nameEn}`
       : issueCategory
         ? issueCategory.nameEn
         : "")
-  if (title.length < 3) throw new ApiError(400, "Select an issue or enter a title")
+  if (issueTitle.length < 3) throw new ApiError(400, "Select an issue or enter a title")
+  // The application leads the title, so queues, emails and SMS show which app it is about
+  const title = (application ? `${application.name} · ${issueTitle}` : issueTitle).slice(0, 300)
 
   const [requester] = await db.select().from(users).where(eq(users.id, input.userId)).limit(1)
   if (!requester) throw new ApiError(401, "Unauthorized")
@@ -277,6 +296,7 @@ export async function createTicket(input: {
       ticketTypeId: input.ticketTypeId ?? null,
       issueCategoryId: issueCategory?.id ?? null,
       issueReasonId: issueReason?.id ?? null,
+      applicationId: application?.id ?? null,
       requesterId: input.userId,
       dueAt: input.dueAt ?? null,
     })

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { toast } from "sonner"
+import { toast } from "@/lib/notice"
 import { ChevronRight } from "lucide-react"
 import { api } from "@/lib/api"
 import { PRIORITY_LABELS, TICKET_PRIORITIES, type TicketPriority } from "@/lib/ticket-constants"
@@ -20,7 +20,24 @@ import { Label } from "@/components/ui/label"
 import { NativeSelect } from "@/components/ui/native-select"
 import { Textarea } from "@/components/ui/textarea"
 
-type Department = { id: number; name: string; active: boolean }
+type Department = { id: number; name: string; code?: string; active: boolean }
+type Application = { id: number; name: string; link: string | null }
+
+/** Values to start with, e.g. from a FactoryOS Help link: /?new=1&app=Employee%20Gatepass&department=Software%20Department */
+export type TicketPrefill = { app?: string; department?: string; issue?: string; reason?: string }
+
+// A ticket about an application goes here (department name or code) under this issue, unless chosen otherwise
+const APPS_DEPARTMENT = process.env.NEXT_PUBLIC_APPS_DEPARTMENT || "IT"
+const APPS_ISSUE = process.env.NEXT_PUBLIC_APPS_ISSUE || "Systems & Applications"
+
+const same = (a: string | null | undefined, b: string | null | undefined) =>
+  !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase()
+
+/** "employee-pass", "/employee-pass" or "Employee Gatepass" all find the Employee Gatepass app */
+function findApp(apps: Application[], wanted: string) {
+  const path = `/${wanted.trim().replace(/^\/+|\/+$/g, "")}`.toLowerCase()
+  return apps.find((a) => same(a.name, wanted) || (a.link && a.link.replace(/\/+$/, "").toLowerCase() === path))
+}
 type IssueReason = { id: number; nameEn: string; nameSi: string }
 type IssueCategory = {
   id: number
@@ -40,12 +57,15 @@ export function NewTicketDialog({
   open,
   onOpenChange,
   onCreated,
+  prefill,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   onCreated: (code: string) => void
+  prefill?: TicketPrefill | null
 }) {
   const qc = useQueryClient()
+  const [applicationId, setApplicationId] = useState("")
   const [departmentId, setDepartmentId] = useState("")
   const [categoryId, setCategoryId] = useState("")
   const [reasonId, setReasonId] = useState("")
@@ -62,6 +82,16 @@ export function NewTicketDialog({
     },
   })
 
+  const applicationsQuery = useQuery({
+    queryKey: ["applications"],
+    enabled: open,
+    staleTime: 10 * 60_000,
+    queryFn: async () => {
+      const res = await api.get("/api/applications")
+      return res.applications as Application[]
+    },
+  })
+
   const issuesQuery = useQuery({
     queryKey: ["issues", departmentId],
     enabled: open && Boolean(departmentId),
@@ -72,7 +102,44 @@ export function NewTicketDialog({
   })
 
   const departments = (departmentsQuery.data || []).filter((d) => d.active)
+  const apps = applicationsQuery.data || []
+  const selectedApp = apps.find((a) => String(a.id) === applicationId)
   const selectedDepartment = departments.find((d) => String(d.id) === departmentId)
+
+  // A prefill is applied during render (not in effects) in two steps, each once per opening: application and
+  // department when their lists have loaded, then the issue when that department's issues have loaded.
+  const [appliedPrefill, setAppliedPrefill] = useState<TicketPrefill | null>(null)
+  const [issueTarget, setIssueTarget] = useState<Pick<TicketPrefill, "app" | "issue" | "reason"> | null>(null)
+  if (open && prefill && appliedPrefill !== prefill && applicationsQuery.isFetched && departmentsQuery.isFetched) {
+    setAppliedPrefill(prefill)
+    const app = prefill.app ? findApp(apps, prefill.app) : undefined
+    const wantedDept = prefill.department || (app ? APPS_DEPARTMENT : "")
+    const dept = departments.find((d) => same(d.name, wantedDept) || same(d.code, wantedDept))
+    if (app) setApplicationId(String(app.id))
+    if (dept) {
+      setDepartmentId(String(dept.id))
+      setCategoryId("")
+      setReasonId("")
+      setIssueTarget({ app: app?.name, issue: prefill.issue, reason: prefill.reason })
+    }
+  }
+  if (issueTarget && issuesQuery.isFetched && issuesQuery.data) {
+    setIssueTarget(null)
+    // The issue named in the link, else one named after the application, else the usual one for applications
+    const category =
+      issuesQuery.data.find((c) => same(c.nameEn, issueTarget.issue)) ||
+      (issueTarget.app
+        ? issuesQuery.data.find((c) => c.nameEn.toLowerCase().includes(issueTarget.app!.toLowerCase())) ||
+          issuesQuery.data.find((c) => same(c.nameEn, APPS_ISSUE))
+        : undefined)
+    if (category) {
+      setCategoryId(String(category.id))
+      const reason =
+        category.reasons.find((r) => same(r.nameEn, issueTarget.reason)) ||
+        (category.reasons.length === 1 ? category.reasons[0] : undefined)
+      setReasonId(reason ? String(reason.id) : "")
+    }
+  }
   const selectedCategory = useMemo(
     () => (issuesQuery.data || []).find((c) => String(c.id) === categoryId),
     [issuesQuery.data, categoryId]
@@ -83,6 +150,9 @@ export function NewTicketDialog({
   const canSubmit = Boolean(departmentId && categoryId && reasonId)
 
   function reset() {
+    setApplicationId("")
+    setAppliedPrefill(null)
+    setIssueTarget(null)
     setDepartmentId("")
     setCategoryId("")
     setReasonId("")
@@ -93,6 +163,18 @@ export function NewTicketDialog({
   function handleOpenChange(next: boolean) {
     if (!next) reset()
     onOpenChange(next)
+  }
+
+  function chooseApplication(id: string) {
+    setApplicationId(id)
+    const app = apps.find((a) => String(a.id) === id)
+    if (app && !departmentId) {
+      const dept = departments.find((d) => same(d.name, APPS_DEPARTMENT) || same(d.code, APPS_DEPARTMENT))
+      if (dept) {
+        chooseDepartment(String(dept.id))
+        setIssueTarget({ app: app.name })
+      }
+    }
   }
 
   function chooseDepartment(id: string) {
@@ -117,21 +199,23 @@ export function NewTicketDialog({
         departmentId: Number(departmentId),
         issueCategoryId: categoryId ? Number(categoryId) : null,
         issueReasonId: reasonId ? Number(reasonId) : null,
+        applicationId: applicationId ? Number(applicationId) : null,
         description,
         priority,
       })
-      toast.success(`Ticket ${res.ticket.code} created`)
+      toast.success(`Ticket ${res.ticket.code} was created`)
       await qc.invalidateQueries({ queryKey: ["tickets"] })
       handleOpenChange(false)
       onCreated(res.ticket.code)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed")
+      toast.error(err instanceof Error ? err.message : "Something went wrong, please try again")
     } finally {
       setLoading(false)
     }
   }
 
   const summary = [
+    selectedApp?.name,
     selectedDepartment?.name,
     selectedCategory?.nameEn,
     selectedReason?.nameEn,
@@ -158,6 +242,22 @@ export function NewTicketDialog({
           className="flex min-h-0 flex-1 flex-col"
         >
           <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
+            <Field label="Application" htmlFor="nt-app">
+              <NativeSelect
+                id="nt-app"
+                className="h-10"
+                value={applicationId}
+                onChange={(e) => chooseApplication(e.target.value)}
+              >
+                <option value="">{applicationsQuery.isLoading ? "Loading…" : "Not about an app"}</option>
+                {apps.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </NativeSelect>
+            </Field>
+
             <Field label="Department" htmlFor="nt-dept">
               <NativeSelect
                 id="nt-dept"
@@ -232,7 +332,7 @@ export function NewTicketDialog({
                     className={cn(
                       "flex items-center justify-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors sm:text-sm",
                       priority === p
-                        ? "bg-background text-foreground shadow-sm"
+                        ? "bg-background text-foreground"
                         : "text-muted-foreground hover:text-foreground"
                     )}
                   >

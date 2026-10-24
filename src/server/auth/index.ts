@@ -1,13 +1,12 @@
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
-import { eq, or, sql } from "drizzle-orm"
+import { eq } from "drizzle-orm"
 import { z } from "zod"
 import { db } from "@/server/db"
 import { users } from "@/server/db/schema"
 import { verifyPassword } from "@/server/auth/password"
-import { redisConfigured } from "@/server/redis/client"
-import { loadDirectory, normalizeIdNumber } from "@/server/redis/directory"
-import { ensureUserFromRedis } from "@/server/redis/sync"
+import { checkLoginCode, findUserByIdentifier } from "@/server/auth/sms-code"
+import { erpConfigured, erpPasswordOk } from "@/server/erp/frappe"
 
 const credentialsSchema = z.object({
   email: z.string().min(1),
@@ -35,64 +34,30 @@ declare module "next-auth/jwt" {
   }
 }
 
-async function findLocalUser(identifier: string) {
-  const raw = identifier.trim()
-  const needle = raw.toLowerCase()
-  if (!needle) return null
-
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(
-      or(
-        eq(users.employeeNumber, raw),
-        sql`lower(${users.employeeNumber}) = ${needle}`,
-        sql`lower(${users.username}) = ${needle}`,
-        eq(users.email, needle)
-      )
-    )
-    .limit(1)
-  return user || null
+// "199512345678" or "95 123 4567 V" -> comparable ID number
+function normalizeIdNumber(value: string) {
+  return value.trim().toUpperCase().replace(/[\s-]/g, "")
 }
 
-async function passwordMatches(input: {
-  password: string
-  passwordHash: string | null
-  nic: string | null
-  identifier: string
-}) {
-  const password = input.password.trim()
-  if (!password) return false
-
-  if (input.passwordHash) {
-    try {
-      if (await verifyPassword(password, input.passwordHash)) return true
-    } catch {
-      // fall through to ID-number login
-    }
-  }
-
-  const entered = normalizeIdNumber(password)
+/** Desk password, ID number (NIC), or for people with an ERP login, their ERP password */
+async function passwordMatches(user: { passwordHash: string | null; nic: string | null; erpUser: string | null }, password: string) {
+  const entered = password.trim()
   if (!entered) return false
-
-  if (input.nic && normalizeIdNumber(input.nic) === entered) return true
-
-  if (redisConfigured()) {
+  if (user.passwordHash && (await verifyPassword(entered, user.passwordHash).catch(() => false))) return true
+  if (user.nic && normalizeIdNumber(user.nic) === normalizeIdNumber(entered)) return true
+  if (user.erpUser && erpConfigured()) {
     try {
-      const { employees } = await loadDirectory()
-      const emp = employees.find((e) => {
-        const username = (e.userName || "").trim().toLowerCase()
-        const empNo = (e.employeeNumber || "").trim().toLowerCase()
-        const ident = input.identifier.trim().toLowerCase()
-        return username === ident || empNo === ident
-      })
-      if (emp?.nic && normalizeIdNumber(emp.nic) === entered) return true
+      return await erpPasswordOk(user.erpUser, entered)
     } catch (error) {
-      console.error("[auth] redis nic lookup failed", error)
+      console.error("[auth] ERP password check failed", error)
     }
   }
-
   return false
+}
+
+async function signedIn(user: { id: number; name: string; email: string | null; role: "USER" | "ADMIN" }) {
+  await db.update(users).set({ lastLoginAt: new Date(), updatedAt: new Date() }).where(eq(users.id, user.id))
+  return { id: String(user.id), name: user.name, email: user.email, role: user.role }
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -102,46 +67,36 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/login",
   },
   providers: [
+    // Username, EPF number or ERP email, with the desk password, ID number or ERP password
     Credentials({
+      id: "credentials",
       name: "credentials",
       credentials: {
-        email: { label: "Username or employee number", type: "text" },
-        password: { label: "Password or ID number", type: "password" },
+        email: { label: "Username, EPF number or ERP email", type: "text" },
+        password: { label: "Password, ID number or ERP password", type: "password" },
       },
       async authorize(raw) {
         const parsed = credentialsSchema.safeParse(raw)
         if (!parsed.success) return null
-
-        const identifier = parsed.data.email.trim()
-        let user = await findLocalUser(identifier)
-        if (redisConfigured()) {
-          try {
-            user = (await ensureUserFromRedis(identifier)) ?? user
-          } catch (error) {
-            console.error("[auth] redis directory lookup failed", error)
-          }
-        }
+        const user = await findUserByIdentifier(parsed.data.email)
         if (!user || !user.active) return null
-
-        const ok = await passwordMatches({
-          password: parsed.data.password,
-          passwordHash: user.passwordHash,
-          nic: user.nic,
-          identifier,
-        })
-        if (!ok) return null
-
-        await db
-          .update(users)
-          .set({ lastLoginAt: new Date(), updatedAt: new Date() })
-          .where(eq(users.id, user.id))
-
-        return {
-          id: String(user.id),
-          name: user.name,
-          email: user.email,
-          role: user.role,
-        }
+        if (!(await passwordMatches(user, parsed.data.password))) return null
+        return signedIn(user)
+      },
+    }),
+    // EPF number or username, with the one-time code sent by SMS
+    Credentials({
+      id: "sms-code",
+      name: "sms-code",
+      credentials: {
+        email: { label: "EPF number or username", type: "text" },
+        password: { label: "Code", type: "text" },
+      },
+      async authorize(raw) {
+        const parsed = credentialsSchema.safeParse(raw)
+        if (!parsed.success) return null
+        const user = await checkLoginCode(parsed.data.email, parsed.data.password)
+        return user ? signedIn(user) : null
       },
     }),
   ],

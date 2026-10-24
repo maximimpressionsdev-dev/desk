@@ -44,6 +44,10 @@ export const users = pgTable(
     username: varchar("username", { length: 80 }),
     nic: varchar("nic", { length: 32 }),
     phone: varchar("phone", { length: 20 }),
+    /** The ERP Employee record (e.g. HR-EMP-00012), set by the ERP directory sync */
+    erpEmployee: varchar("erp_employee", { length: 40 }),
+    /** Their ERP login (an email), when they have one: they can sign in with the ERP password */
+    erpUser: varchar("erp_user", { length: 140 }),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -53,7 +57,26 @@ export const users = pgTable(
     uniqueIndex("users_external_id_uidx").on(t.externalId),
     uniqueIndex("users_employee_number_uidx").on(t.employeeNumber),
     index("users_username_idx").on(t.username),
+    index("users_erp_employee_idx").on(t.erpEmployee),
+    index("users_erp_user_idx").on(t.erpUser),
   ]
+)
+
+// One-time sign-in codes sent by SMS; only a hash is stored and each code works once
+export const loginCodes = pgTable(
+  "login_codes",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    codeHash: text("code_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("login_codes_user_created_idx").on(t.userId, t.createdAt)]
 )
 
 export const invites = pgTable(
@@ -92,6 +115,8 @@ export const departments = pgTable(
     name: varchar("name", { length: 200 }).notNull(),
     active: boolean("active").notNull().default(true),
     notifyEmail: varchar("notify_email", { length: 320 }),
+    /** The ERP Department record (e.g. "Accounts - MIL"), set by the ERP directory sync */
+    erpName: varchar("erp_name", { length: 140 }),
     externalId: integer("external_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -168,6 +193,24 @@ export const issueReasons = pgTable(
   (t) => [index("issue_reasons_category_idx").on(t.categoryId)]
 )
 
+// FactoryOS applications a ticket can be about, copied from the ERP (Maxim App) by syncApplications()
+export const applications = pgTable(
+  "applications",
+  {
+    id: serial("id").primaryKey(),
+    /** The Maxim App record name in the ERP, e.g. "Employee Gatepass" */
+    name: varchar("name", { length: 120 }).notNull(),
+    /** Its path under FactoryOS, e.g. "/employee-pass" */
+    link: varchar("link", { length: 300 }),
+    icon: varchar("icon", { length: 60 }),
+    sortOrder: integer("sort_order").notNull().default(0),
+    /** Gone from the ERP or disabled there: kept for old tickets, hidden from new ones */
+    active: boolean("active").notNull().default(true),
+    syncedAt: timestamp("synced_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("applications_name_uidx").on(t.name)]
+)
+
 export const tickets = pgTable(
   "tickets",
   {
@@ -184,6 +227,7 @@ export const tickets = pgTable(
     ticketTypeId: integer("ticket_type_id").references(() => ticketTypes.id),
     issueCategoryId: integer("issue_category_id").references(() => issueCategories.id),
     issueReasonId: integer("issue_reason_id").references(() => issueReasons.id),
+    applicationId: integer("application_id").references(() => applications.id),
     requesterId: integer("requester_id")
       .notNull()
       .references(() => users.id),

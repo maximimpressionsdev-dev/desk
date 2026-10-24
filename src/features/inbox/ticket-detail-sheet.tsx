@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
-import { toast } from "sonner"
+import { toast } from "@/lib/notice"
 import {
   Ban,
   Bell,
@@ -148,6 +148,7 @@ export function TicketDetailSheet({
         issueCategoryNameSi: string | null
         issueReasonNameEn: string | null
         issueReasonNameSi: string | null
+        applicationName: string | null
         dueAt: string | null
         resolvedAt: string | null
         closedAt: string | null
@@ -269,7 +270,7 @@ export function TicketDetailSheet({
       api.post(`/api/tickets/${code}/actions`, body),
     onSuccess: async () => {
       await refresh()
-      toast.success("Updated")
+      toast.success("The ticket was updated")
       setComment("")
       setHoldReason("")
       setPendingStatus(null)
@@ -286,7 +287,7 @@ export function TicketDetailSheet({
     },
     onSuccess: async () => {
       await refresh()
-      toast.success("Uploaded")
+      toast.success("The file was uploaded")
     },
     onError: (err: Error) => toast.error(err.message),
   })
@@ -390,6 +391,7 @@ export function TicketDetailSheet({
               </SheetDescription>
 
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-xl border bg-muted/30 p-3 text-xs">
+                {ticket.applicationName ? <Meta label="Application" value={ticket.applicationName} /> : null}
                 <Meta label="Department" value={ticket.departmentName} />
                 <Meta
                   label="Main issue"

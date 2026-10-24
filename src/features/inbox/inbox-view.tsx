@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { toast } from "sonner"
+import { toast } from "@/lib/notice"
 import { AlarmClock, CheckCheck, Hand, Search, UserX, X } from "lucide-react"
 import { api } from "@/lib/api"
 import { PRIORITY_LABELS, TICKET_PRIORITIES } from "@/lib/ticket-constants"
@@ -11,7 +11,7 @@ import { cn, formatDateTime, formatDuration, formatRelative, initials } from "@/
 import { SimpleShell, type InboxTab } from "@/components/shared/simple-shell"
 import { EmptyState } from "@/components/shared/empty-state"
 import { PriorityBadge, StatusBadge, statusDot } from "@/components/ticket-badges"
-import { NewTicketDialog } from "@/features/inbox/new-ticket-dialog"
+import { NewTicketDialog, type TicketPrefill } from "@/features/inbox/new-ticket-dialog"
 import { TicketDetailSheet } from "@/features/inbox/ticket-detail-sheet"
 import type { TicketListItem } from "@/components/ticket-list"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -66,6 +66,7 @@ export function InboxView() {
   const [overdueOnly, setOverdueOnly] = useState(false)
   const [unassignedOnly, setUnassignedOnly] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
+  const [prefill, setPrefill] = useState<TicketPrefill | null>(null)
   const [selectedCode, setSelectedCode] = useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -78,7 +79,18 @@ export function InboxView() {
     }
     const tabParam = searchParams.get("tab") as InboxTab | null
     if (tabParam && tabParam in TAB_META) setTab(tabParam)
-  }, [searchParams])
+
+    // A link such as /?new=1&app=Employee%20Gatepass&department=Software%20Department (FactoryOS Help) opens the
+    // new ticket form filled in. The parameters are then dropped from the address so a reload doesn't reopen it.
+    if (searchParams.get("new") === "1") {
+      const pick = (key: string) => searchParams.get(key)?.trim().slice(0, 200) || undefined
+      setPrefill({ app: pick("app"), department: pick("department"), issue: pick("issue"), reason: pick("reason") })
+      setCreateOpen(true)
+      const rest = new URLSearchParams(searchParams.toString())
+      for (const key of ["new", "app", "department", "issue", "reason"]) rest.delete(key)
+      router.replace(rest.size ? `/?${rest}` : "/", { scroll: false })
+    }
+  }, [searchParams, router])
 
   // N opens a new ticket. There is deliberately no claim shortcut: a stray key
   // (or Ctrl+C while copying) must never assign a ticket.
@@ -195,7 +207,7 @@ export function InboxView() {
   const claimMutation = useMutation({
     mutationFn: (code: string) => api.post(`/api/tickets/${code}/actions`, { action: "claim" }),
     onSuccess: async (_data, code) => {
-      toast.success("Claimed")
+      toast.success("The ticket is now yours")
       await qc.invalidateQueries({ queryKey: ["tickets"] })
       openTicket(code)
     },
@@ -207,7 +219,7 @@ export function InboxView() {
       api.post("/api/tickets/bulk", payload),
     onSuccess: async (data) => {
       const ok = (data.results as Array<{ ok: boolean }>).filter((r) => r.ok).length
-      toast.success(`Updated ${ok} ticket(s)`)
+      toast.success(`Updated ${ok} ticket(s) successfully`)
       setSelected(new Set())
       await qc.invalidateQueries({ queryKey: ["tickets"] })
     },
@@ -271,7 +283,7 @@ export function InboxView() {
       <div className="w-full space-y-5 pb-24 2xl:space-y-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="space-y-1">
-            <h1 className="text-2xl font-semibold tracking-tight">{TAB_META[tab].title}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{TAB_META[tab].title}</h1>
             <p className="text-muted-foreground text-sm">
               {ticketsQuery.isLoading ? (
                 "Loading tickets…"
@@ -318,7 +330,7 @@ export function InboxView() {
                     className={cn(
                       "rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors",
                       active
-                        ? "bg-background text-foreground shadow-sm"
+                        ? "bg-background text-foreground"
                         : "text-muted-foreground hover:text-foreground"
                     )}
                   >
@@ -382,7 +394,7 @@ export function InboxView() {
         </div>
 
         {ticketsQuery.isLoading ? (
-          <div className="border-border/60 bg-card space-y-2 rounded-xl border p-4">
+          <div className="border-border bg-card space-y-2 rounded-2xl border p-4">
             {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-11 w-full rounded-lg" />
             ))}
@@ -428,7 +440,7 @@ export function InboxView() {
         ) : (
           <>
             {/* Desktop table */}
-            <div className="border-border/60 bg-card hidden overflow-hidden rounded-xl border md:block">
+            <div className="border-border bg-card hidden overflow-hidden rounded-2xl border md:block">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/30 hover:bg-muted/30">
@@ -621,7 +633,11 @@ export function InboxView() {
 
       <NewTicketDialog
         open={createOpen}
-        onOpenChange={setCreateOpen}
+        prefill={prefill}
+        onOpenChange={(o) => {
+          setCreateOpen(o)
+          if (!o) setPrefill(null)
+        }}
         onCreated={(code) => {
           setTab("mine")
           setStatusOverride(null)
@@ -653,7 +669,7 @@ function FilterToggle({
       size="sm"
       variant={active ? "secondary" : "outline"}
       aria-pressed={active}
-      className={cn("h-10 gap-2 px-3.5 text-sm", active && "ring-foreground/15 ring-1")}
+      className={cn("h-10 gap-2 rounded-xl px-3.5 text-sm", active && "bg-muted")}
       onClick={onClick}
     >
       {icon}

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { toast } from "sonner"
+import { toast } from "@/lib/notice"
 import { api } from "@/lib/api"
 import { SimpleShell } from "@/components/shared/simple-shell"
 import { Button } from "@/components/ui/button"
@@ -59,7 +59,7 @@ export default function AdminPage() {
     mutationFn: (dept: Department) =>
       api.patch("/api/departments", { id: dept.id, active: !dept.active }),
     onSuccess: async (_data, dept) => {
-      toast.success(dept.active ? "Department deactivated" : "Department activated")
+      toast.success(dept.active ? "The department was deactivated" : "The department was activated")
       await qc.invalidateQueries({ queryKey: ["departments"] })
       await qc.invalidateQueries({ queryKey: ["departments", "admin"] })
     },
@@ -107,7 +107,7 @@ export default function AdminPage() {
     mutationFn: () =>
       api.post("/api/admin/invites", { email: inviteEmail, name: inviteName || undefined }),
     onSuccess: (data) => {
-      toast.success(data.inviteUrl ? `Invite created: ${data.inviteUrl}` : "Invite sent")
+      toast.success(data.inviteUrl ? `Invite created: ${data.inviteUrl}` : "The invite was sent")
       setInviteEmail("")
       setInviteName("")
     },
@@ -117,7 +117,7 @@ export default function AdminPage() {
   const createDeptMutation = useMutation({
     mutationFn: () => api.post("/api/departments", { code: deptCode, name: deptName }),
     onSuccess: async () => {
-      toast.success("Department created")
+      toast.success("The department was created")
       setDeptCode("")
       setDeptName("")
       await qc.invalidateQueries({ queryKey: ["departments"] })
@@ -133,7 +133,7 @@ export default function AdminPage() {
         userId: Number(memberUserId),
       }),
     onSuccess: async () => {
-      toast.success("Member added")
+      toast.success("The member was added")
       setMemberUserId("")
       await qc.invalidateQueries({ queryKey: ["admin-users"] })
     },
@@ -147,7 +147,7 @@ export default function AdminPage() {
         name: typeName,
       }),
     onSuccess: async () => {
-      toast.success("Ticket type added")
+      toast.success("The ticket type was added")
       setTypeName("")
       await qc.invalidateQueries({ queryKey: ["ticket-types", selectedDept] })
     },
@@ -161,7 +161,7 @@ export default function AdminPage() {
         notifyEmail: notifyEmail.trim() || null,
       }),
     onSuccess: async () => {
-      toast.success("Notify email saved")
+      toast.success("The notify email was saved")
       await qc.invalidateQueries({ queryKey: ["departments"] })
       await qc.invalidateQueries({ queryKey: ["departments", "admin"] })
     },
@@ -176,10 +176,23 @@ export default function AdminPage() {
         body: cannedBody,
       }),
     onSuccess: async () => {
-      toast.success("Canned reply added")
+      toast.success("The canned reply was added")
       setCannedTitle("")
       setCannedBody("")
       await qc.invalidateQueries({ queryKey: ["canned-replies", selectedDept] })
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+
+  const applicationsQuery = useQuery({
+    queryKey: ["applications"],
+    queryFn: async () => (await api.get("/api/applications")).applications as Array<{ id: number; name: string; link: string | null }>,
+  })
+  const appsSyncMutation = useMutation({
+    mutationFn: () => api.post("/api/applications"),
+    onSuccess: async (data) => {
+      toast.success(`Synced ${data.synced} applications from the ERP`)
+      await qc.invalidateQueries({ queryKey: ["applications"] })
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -188,7 +201,7 @@ export default function AdminPage() {
     mutationFn: () => api.post("/api/admin/sync"),
     onSuccess: async (data) => {
       toast.success(
-        `Synced ${data.departmentsUpserted} departments and ${data.usersUpserted} employees`
+        `Synced ${data.usersAdded + data.usersUpdated} people and ${data.departmentsAdded} new departments from the ERP`
       )
       await qc.invalidateQueries({ queryKey: ["departments"] })
       await qc.invalidateQueries({ queryKey: ["departments", "admin"] })
@@ -206,7 +219,7 @@ export default function AdminPage() {
         nameSi: mainSi,
       }),
     onSuccess: async () => {
-      toast.success("Main issue added")
+      toast.success("The main issue was added")
       setMainEn("")
       setMainSi("")
       await qc.invalidateQueries({ queryKey: ["issues-admin", selectedDept] })
@@ -224,7 +237,7 @@ export default function AdminPage() {
         nameSi: subSi,
       }),
     onSuccess: async () => {
-      toast.success("Sub issue added")
+      toast.success("The sub issue was added")
       setSubEn("")
       setSubSi("")
       await qc.invalidateQueries({ queryKey: ["issues-admin", selectedDept] })
@@ -237,35 +250,66 @@ export default function AdminPage() {
     <SimpleShell title="Admin">
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">Admin</h1>
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Admin</h1>
         <p className="text-muted-foreground mt-0.5 text-sm">
           Users, departments, membership, and ticket types.
         </p>
       </div>
 
-      <Card className="border-border/50 bg-card/40">
+      <Card className="border-border bg-card rounded-2xl shadow-none">
         <CardHeader className="border-b">
           <CardTitle>Company directory</CardTitle>
           <CardDescription>
-            Pull departments and employees from Redis. Staff can then sign in with company email
-            or employee number. Users without an email in Redis are stored with an empty email.
+            Staff and departments come from the ERP (Employee and Department). Syncing adds new people
+            and departments and refreshes EPF numbers, mobile numbers and ERP logins (names stay as they are). New people
+            start in their ERP department&apos;s queue; it never changes existing queues or deactivates anyone, and new
+            departments arrive switched off.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap items-center gap-3 pt-4">
           <Button disabled={syncMutation.isPending} onClick={() => syncMutation.mutate()}>
-            {syncMutation.isPending ? "Syncing…" : "Sync from Redis"}
+            {syncMutation.isPending ? "Syncing…" : "Sync from ERP"}
           </Button>
           {syncMutation.data ? (
             <p className="text-muted-foreground text-sm">
-              {syncMutation.data.departmentsUpserted} departments ·{" "}
-              {syncMutation.data.usersUpserted} people · {syncMutation.data.skipped} skipped
+              {syncMutation.data.usersAdded} people added, {syncMutation.data.usersUpdated} updated ·{" "}
+              {syncMutation.data.departmentsAdded} departments added · {syncMutation.data.membershipsAdded} added to
+              queues · {syncMutation.data.skipped} skipped
             </p>
           ) : null}
         </CardContent>
       </Card>
 
+      <Card className="border-border bg-card rounded-2xl shadow-none">
+        <CardHeader className="border-b">
+          <CardTitle>Applications</CardTitle>
+          <CardDescription>
+            The FactoryOS apps people can pick on a new ticket, from the ERP&apos;s app list (Maxim App). Refreshed
+            automatically once a day; apps that are Upcoming or switched off in the ERP are left out.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3 pt-4">
+          <div className="flex flex-wrap gap-1.5">
+            {applicationsQuery.isLoading ? (
+              <span className="text-muted-foreground text-sm">Loading…</span>
+            ) : applicationsQuery.data?.length ? (
+              applicationsQuery.data.map((a) => (
+                <span key={a.id} className="border-border text-muted-foreground rounded-full border px-2.5 py-0.5 text-xs">
+                  {a.name}
+                </span>
+              ))
+            ) : (
+              <span className="text-muted-foreground text-sm">No applications yet. Sync to load them from the ERP.</span>
+            )}
+          </div>
+          <Button disabled={appsSyncMutation.isPending} onClick={() => appsSyncMutation.mutate()}>
+            {appsSyncMutation.isPending ? "Syncing…" : "Sync from ERP"}
+          </Button>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="border-border/50 bg-card/40">
+        <Card className="border-border bg-card rounded-2xl shadow-none">
           <CardHeader className="border-b">
             <CardTitle>Invite user</CardTitle>
             <CardDescription>They set a password from the invite link.</CardDescription>
@@ -288,7 +332,7 @@ export default function AdminPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-border/50 bg-card/40">
+        <Card className="border-border bg-card rounded-2xl shadow-none">
           <CardHeader className="border-b">
             <CardTitle>Create department</CardTitle>
             <CardDescription>Anyone can submit to active departments.</CardDescription>
@@ -312,12 +356,12 @@ export default function AdminPage() {
         </Card>
       </div>
 
-      <Card className="border-border/50 bg-card/40">
+      <Card className="border-border bg-card rounded-2xl shadow-none">
         <CardHeader className="border-b">
           <CardTitle>Departments</CardTitle>
           <CardDescription>
             Deactivate departments you do not use for tickets. Inactive departments stay in the
-            database but are hidden from new ticket forms. Redis sync will not reactivate them.
+            database but are hidden from new ticket forms. The ERP sync never switches them on.
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-4">
@@ -362,7 +406,7 @@ export default function AdminPage() {
         </CardContent>
       </Card>
 
-      <Card className="border-border/50 bg-card/40">
+      <Card className="border-border bg-card rounded-2xl shadow-none">
         <CardHeader className="border-b">
           <CardTitle>Department membership & types</CardTitle>
         </CardHeader>
@@ -568,7 +612,7 @@ export default function AdminPage() {
                           await qc.invalidateQueries({
                             queryKey: ["canned-replies", selectedDept],
                           })
-                          toast.success("Removed")
+                          toast.success("It was removed successfully")
                         }}
                       >
                         Remove
@@ -582,7 +626,7 @@ export default function AdminPage() {
         </CardContent>
       </Card>
 
-      <Card className="border-border/50 bg-card/40">
+      <Card className="border-border bg-card rounded-2xl shadow-none">
         <CardHeader className="border-b">
           <CardTitle>Users</CardTitle>
         </CardHeader>

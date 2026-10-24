@@ -25,7 +25,7 @@ npm run db:sync
 npm run dev
 ```
 
-Staff sign in with **username/employee number + password/NIC** (synced from Redis). Run `npm run db:sync` to refresh the directory.
+Staff sign in with their username or EPF number and password/NIC, their ERP login, or a code by SMS (see below). Run `npm run db:sync` to refresh staff and departments from the ERP.
 
 ## App surfaces
 
@@ -49,25 +49,41 @@ curl -X POST -H "Authorization: Bearer $CRON_SECRET" \
 
 - `overdue` — emails assignees/requesters for past-due open tickets
 - `digest` — daily summary of open assigned work
-- `sync` — pull employees and departments from Redis
+- `sync` — refresh staff and departments from the ERP
+- `apps` — refresh the FactoryOS application list from the ERP
 
-## Redis directory
+## ERP directory and applications
 
-Desk reads `employees` and `departments` from Redis DB 3 and upserts them into Postgres.
+Staff, departments and the FactoryOS application list come from the company ERP (Frappe): `Employee`, `Department` and `Maxim App`.
 
 ```bash
-npm run db:sync
+npm run db:sync   # staff and departments (also Admin → Company directory → Sync from ERP)
 ```
 
-Staff sign in with company email or employee number (same password hash as Redis). Employees without an email in Redis are stored with a null email.
+The sync adds and updates but never removes: new departments arrive switched off, new people start in their ERP department's queue, existing queues are never changed by the sync, and nobody is deactivated for being missing from the ERP. The application list refreshes itself once a day (or Admin → Applications → Sync from ERP).
 
 Set in `.env`:
 
 ```
-REDIS_HOST=159.138.98.55
-REDIS_PORT=63792
-REDIS_DB=3
+FRAPPE_URL=https://erp.example.com
+FRAPPE_API_KEY=
+FRAPPE_API_SECRET=
 ```
+
+## Signing in
+
+One page, three ways:
+
+- **Username or EPF number + desk password or ID number (NIC)**, as before.
+- **ERP email + ERP password**, for staff with an ERP login (checked against the ERP).
+- **EPF number + a code by SMS** to the mobile number from the ERP (10 minutes, 5 tries, 1 a minute, 5 an hour).
+
+## New ticket links
+
+`/?new=1&app=<app>&department=<name or code>&issue=<main issue>&reason=<sub issue>` opens the new ticket form filled in;
+each part is optional. FactoryOS's Help button uses it: `app` is the app's name (or its path, e.g. `employee-pass`).
+Picking an application sends the ticket to `NEXT_PUBLIC_APPS_DEPARTMENT` (default `IT`) under `NEXT_PUBLIC_APPS_ISSUE`
+(default `Systems & Applications`).
 
 ## Docker (full stack)
 
