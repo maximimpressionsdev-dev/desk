@@ -85,13 +85,13 @@ function LoginForm() {
         <div className="space-y-1">
           <h1 className="text-foreground text-xl font-semibold tracking-tight sm:text-2xl">Sign in to Support Desk</h1>
           <p className="text-muted-foreground text-sm">
-            {mode === "password" ? "Use your EPF number, username or ERP email" : "We'll text a code to your mobile"}
+            {mode === "password" ? "Use your employee number or username" : "We'll text a code to your mobile"}
           </p>
         </div>
       </div>
       <form className="flex flex-col gap-5" onSubmit={onSubmit}>
         <div className="flex flex-col gap-2">
-          <Label htmlFor="email">{mode === "password" ? "EPF number, username or ERP email" : "EPF number or username"}</Label>
+          <Label htmlFor="email">Employee Number or Username</Label>
           <Input
             id="email"
             type="text"
@@ -105,7 +105,7 @@ function LoginForm() {
         </div>
         {mode === "password" ? (
           <div className="flex flex-col gap-2">
-            <Label htmlFor="password">Password, ID number or ERP password</Label>
+            <Label htmlFor="password">NIC or Password</Label>
             <Input
               id="password"
               type="password"
