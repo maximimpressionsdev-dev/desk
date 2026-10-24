@@ -29,6 +29,11 @@ export type TicketPrefill = { app?: string; department?: string; issue?: string;
 // A ticket about an application goes here (department name or code) under this issue, unless chosen otherwise
 const APPS_DEPARTMENT = process.env.NEXT_PUBLIC_APPS_DEPARTMENT || "IT"
 const APPS_ISSUE = process.env.NEXT_PUBLIC_APPS_ISSUE || "Systems & Applications"
+// The Application field only shows for these issues (comma-separated main issue names)
+const ISSUES_WITH_APP = (process.env.NEXT_PUBLIC_ISSUES_WITH_APP || "Systems & Applications,Access & Accounts")
+  .split(",")
+  .map((n) => n.trim())
+  .filter(Boolean)
 
 const same = (a: string | null | undefined, b: string | null | undefined) =>
   !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase()
@@ -145,6 +150,7 @@ export function NewTicketDialog({
     [issuesQuery.data, categoryId]
   )
   const selectedReason = selectedCategory?.reasons.find((r) => String(r.id) === reasonId)
+  const showApp = !!selectedCategory && ISSUES_WITH_APP.some((n) => same(n, selectedCategory.nameEn))
 
   // Reset in the handlers (not effects) so each choice clears the steps after it.
   const canSubmit = Boolean(departmentId && categoryId && reasonId)
@@ -165,26 +171,18 @@ export function NewTicketDialog({
     onOpenChange(next)
   }
 
-  function chooseApplication(id: string) {
-    setApplicationId(id)
-    const app = apps.find((a) => String(a.id) === id)
-    if (app && !departmentId) {
-      const dept = departments.find((d) => same(d.name, APPS_DEPARTMENT) || same(d.code, APPS_DEPARTMENT))
-      if (dept) {
-        chooseDepartment(String(dept.id))
-        setIssueTarget({ app: app.name })
-      }
-    }
-  }
-
   function chooseDepartment(id: string) {
     setDepartmentId(id)
+    setApplicationId("")
     setCategoryId("")
     setReasonId("")
   }
 
   function chooseCategory(id: string) {
     setCategoryId(id)
+    // Keep the application only while the issue is one that has one
+    const category = issuesQuery.data?.find((c) => String(c.id) === id)
+    if (!category || !ISSUES_WITH_APP.some((n) => same(n, category.nameEn))) setApplicationId("")
     // A category with a single sub issue needs no extra click.
     const reasons = issuesQuery.data?.find((c) => String(c.id) === id)?.reasons ?? []
     setReasonId(reasons.length === 1 ? String(reasons[0].id) : "")
@@ -199,7 +197,7 @@ export function NewTicketDialog({
         departmentId: Number(departmentId),
         issueCategoryId: categoryId ? Number(categoryId) : null,
         issueReasonId: reasonId ? Number(reasonId) : null,
-        applicationId: applicationId ? Number(applicationId) : null,
+        applicationId: showApp && applicationId ? Number(applicationId) : null,
         description,
         priority,
       })
@@ -215,7 +213,7 @@ export function NewTicketDialog({
   }
 
   const summary = [
-    selectedApp?.name,
+    showApp ? selectedApp?.name : undefined,
     selectedDepartment?.name,
     selectedCategory?.nameEn,
     selectedReason?.nameEn,
@@ -242,22 +240,6 @@ export function NewTicketDialog({
           className="flex min-h-0 flex-1 flex-col"
         >
           <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
-            <Field label="Application" htmlFor="nt-app">
-              <NativeSelect
-                id="nt-app"
-                className="h-10"
-                value={applicationId}
-                onChange={(e) => chooseApplication(e.target.value)}
-              >
-                <option value="">{applicationsQuery.isLoading ? "Loading…" : "Not about an app"}</option>
-                {apps.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-              </NativeSelect>
-            </Field>
-
             <Field label="Department" htmlFor="nt-dept">
               <NativeSelect
                 id="nt-dept"
@@ -298,6 +280,25 @@ export function NewTicketDialog({
                 ))}
               </NativeSelect>
             </Field>
+
+            {showApp ? (
+              <Field label="Application" htmlFor="nt-app">
+              <NativeSelect
+                id="nt-app"
+                className="h-10"
+                value={applicationId}
+                onChange={(e) => setApplicationId(e.target.value)}
+              >
+                <option value="">{applicationsQuery.isLoading ? "Loading…" : "Not about an app"}</option>
+                {apps.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </NativeSelect>
+              </Field>
+
+            ) : null}
 
             <Field label="Sub issue" htmlFor="nt-reason">
               <NativeSelect

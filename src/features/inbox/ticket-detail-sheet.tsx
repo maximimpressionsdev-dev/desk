@@ -800,7 +800,7 @@ function ChatMessage({
         <div className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
           <span className="text-foreground/80 font-medium">{mine ? "You" : item.author}</span>
           {item.isInternal ? (
-            <span className="rounded bg-violet-100 px-1 text-[10px] font-medium text-violet-700">
+            <span className="rounded bg-violet-100 px-1 text-[10px] font-medium text-violet-700 dark:bg-violet-500/20 dark:text-violet-300">
               Internal
             </span>
           ) : null}
@@ -812,7 +812,7 @@ function ChatMessage({
           className={cn(
             "rounded-2xl px-3 py-2 text-sm leading-snug whitespace-pre-wrap break-words",
             item.isInternal
-              ? "bg-violet-50 text-foreground ring-1 ring-violet-200"
+              ? "bg-violet-50 text-foreground ring-1 ring-violet-200 dark:bg-violet-500/10 dark:ring-violet-500/30"
               : mine
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted text-foreground",

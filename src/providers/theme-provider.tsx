@@ -3,16 +3,10 @@
 import { ThemeProvider as NextThemesProvider } from "@teispace/next-themes"
 import type { ThemeProviderProps } from "@teispace/next-themes"
 
+// Light or dark: follows the device until someone picks one with the toggle (as in FactoryOS)
 export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
   return (
-    // Light mode only, even when the OS prefers dark.
-    <NextThemesProvider
-      attribute="class"
-      defaultTheme="light"
-      forcedTheme="light"
-      enableSystem={false}
-      {...props}
-    >
+    <NextThemesProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange {...props}>
       {children}
     </NextThemesProvider>
   )

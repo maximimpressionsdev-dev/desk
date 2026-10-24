@@ -8,6 +8,7 @@ import { toast } from "@/lib/notice"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { ThemeToggle } from "@/components/shared/theme-toggle"
 
 function safeNextPath(raw: string | null) {
   if (!raw) return "/"
@@ -160,7 +161,7 @@ function LoginForm() {
         <span className="text-border" aria-hidden>
           ·
         </span>
-        <Link href="/manual" className="font-medium text-violet-600 underline-offset-4 hover:text-violet-700 hover:underline">
+        <Link href="/manual" className="font-medium text-violet-600 underline-offset-4 hover:text-violet-700 hover:underline dark:text-violet-400 dark:hover:text-violet-300">
           User manual
         </Link>
       </p>
@@ -171,6 +172,9 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <div className="bg-background flex min-h-dvh flex-col px-4 py-6 font-sans sm:p-10">
+      <div className="flex justify-end">
+        <ThemeToggle />
+      </div>
       <div className="flex flex-1 items-center justify-center py-10">
         <Suspense fallback={<div className="text-muted-foreground text-sm">Loading…</div>}>
           <LoginForm />

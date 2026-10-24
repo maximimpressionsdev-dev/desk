@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
+import { ThemeToggle } from "@/components/shared/theme-toggle"
 
 export type InboxTab = "for-me" | "mine" | "queue"
 
@@ -37,8 +38,9 @@ const NAV = [
 const navItemClass =
   "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl px-3 py-2 text-sm transition-colors"
 
-// Where the FactoryOS mark goes: the dock's App Desk
-const FACTORYOS_URL = process.env.NEXT_PUBLIC_FACTORYOS_URL || "https://factoryos.maximimpressions.com"
+// Where the FactoryOS mark goes: the dock's App Desk once FactoryOS is live (NEXT_PUBLIC_FACTORYOS_URL);
+// until then it stays in the desk
+const FACTORYOS_URL = process.env.NEXT_PUBLIC_FACTORYOS_URL?.trim() || ""
 
 const headerButtonClass =
   "inline-flex h-9 items-center justify-center gap-1.5 rounded-xl px-2.5 text-[15px] font-normal tracking-tight transition-colors"
@@ -49,13 +51,13 @@ function firstName(name: string) {
   return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase()
 }
 
-/** The FactoryOS mark: four tiles, one dimmed; back to the dock */
+/** The FactoryOS mark: four tiles, one dimmed; back to the dock (or the desk's home until FactoryOS is live) */
 function FactoryOSMark() {
   return (
     <a
-      href={FACTORYOS_URL}
-      title="Back to FactoryOS"
-      aria-label="Back to FactoryOS"
+      href={FACTORYOS_URL || "/"}
+      title={FACTORYOS_URL ? "Back to FactoryOS" : "Support Desk home"}
+      aria-label={FACTORYOS_URL ? "Back to FactoryOS" : "Support Desk home"}
       className="bg-foreground grid size-9 shrink-0 grid-cols-2 gap-1 rounded-xl p-2 shadow-md transition-transform duration-300 hover:-translate-y-0.5 hover:shadow-lg"
     >
       {[0, 1, 2, 3].map((i) => (
@@ -183,12 +185,13 @@ export function SimpleShell({
               title="How the support desk works"
               className={cn(
                 headerButtonClass,
-                "bg-violet-500/10 text-violet-600 hover:bg-violet-500/20 hover:text-violet-700"
+                "bg-violet-500/10 text-violet-600 hover:bg-violet-500/20 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300"
               )}
             >
               <LifeBuoy className="size-4" />
               <span className="hidden sm:inline">Help?</span>
             </Link>
+            <ThemeToggle />
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
@@ -219,10 +222,12 @@ export function SimpleShell({
                   <BookOpen />
                   User manual
                 </DropdownMenuItem>
-                <DropdownMenuItem render={<a href={FACTORYOS_URL} />}>
-                  <LayoutGrid />
-                  FactoryOS apps
-                </DropdownMenuItem>
+                {FACTORYOS_URL ? (
+                  <DropdownMenuItem render={<a href={FACTORYOS_URL} />}>
+                    <LayoutGrid />
+                    FactoryOS apps
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuItem variant="destructive" onClick={() => signOut({ callbackUrl: "/login" })}>
                   <LogOut />
                   Sign out

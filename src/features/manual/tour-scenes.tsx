@@ -240,7 +240,7 @@ function InboxMain({
           <div className="space-y-1">
             <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
             <p className="text-muted-foreground text-sm">
-              2 tickets <span className="text-rose-600">· 1 overdue</span>
+              2 tickets <span className="text-rose-600 dark:text-rose-400">· 1 overdue</span>
             </p>
           </div>
           <div className="relative w-full sm:w-72">
@@ -384,7 +384,7 @@ function Bubble({ who, mine, internal, text }: { who: string; mine?: boolean; in
         <p className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
           <span className="text-foreground/80 font-medium">{mine ? "You" : who}</span>
           {internal ? (
-            <span className="rounded bg-violet-100 px-1 text-[10px] font-medium text-violet-700">Internal</span>
+            <span className="rounded bg-violet-100 px-1 text-[10px] font-medium text-violet-700 dark:bg-violet-500/20 dark:text-violet-300">Internal</span>
           ) : null}
           2h
         </p>
@@ -392,7 +392,7 @@ function Bubble({ who, mine, internal, text }: { who: string; mine?: boolean; in
           className={cn(
             "rounded-2xl px-3 py-2 text-sm leading-snug",
             internal
-              ? "bg-violet-50 ring-1 ring-violet-200"
+              ? "bg-violet-50 ring-1 ring-violet-200 dark:bg-violet-500/10 dark:ring-violet-500/30"
               : mine
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted",
