@@ -127,6 +127,8 @@ export function TicketDetailSheet({
     queryKey: ["ticket", code],
     enabled: open && Boolean(code),
     queryFn: async () => api.get(`/api/tickets/${code}`),
+    // While the ticket is open, pick up others' replies and changes every few seconds (paused when the tab is hidden)
+    refetchInterval: open ? 4000 : false,
   })
 
   const ticket = detailQuery.data?.ticket as
@@ -227,11 +229,23 @@ export function TicketDetailSheet({
     return items.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
   }, [detailQuery.data])
 
-  // Keep the latest message in view, like a chat.
+  // Keep the latest message in view, like a chat: always on opening, and for new messages only when already near the
+  // bottom, so a reply arriving doesn't pull you away from older messages you're reading
   const scrollRef = useRef<HTMLDivElement>(null)
+  const nearBottom = useRef(true)
   useEffect(() => {
     const el = scrollRef.current
-    if (open && el) el.scrollTop = el.scrollHeight
+    if (!el) return
+    const onScroll = () => (nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120)
+    el.addEventListener("scroll", onScroll)
+    return () => el.removeEventListener("scroll", onScroll)
+  }, [open, Boolean(detailQuery.data)])
+  useEffect(() => {
+    nearBottom.current = true
+  }, [open, code])
+  useEffect(() => {
+    const el = scrollRef.current
+    if (open && el && nearBottom.current) el.scrollTop = el.scrollHeight
   }, [open, timeline.length])
 
   const files = (detailQuery.data?.attachments || []) as Array<{
