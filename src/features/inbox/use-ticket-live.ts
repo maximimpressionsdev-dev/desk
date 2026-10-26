@@ -1,9 +1,9 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 import { useQueryClient } from "@tanstack/react-query"
-import { createClient } from "@/lib/supabase/client"
+import { createRealtimeClient } from "@/lib/supabase/client"
 
 // Live ticket: a Supabase Realtime channel per open ticket. It only carries signals ("changed", "typing") and who is
 // viewing, never ticket content: on "changed" the sheet reloads through the desk's own signed-in API.
@@ -12,14 +12,15 @@ const TYPING_MS = 4000
 
 export function useTicketLive(code: string | null, open: boolean, meId: string | null, meName: string) {
   const qc = useQueryClient()
-  const supabase = useMemo(() => createClient(), [])
   const channel = useRef<RealtimeChannel | null>(null)
   const lastTyping = useRef(0)
   const [typing, setTyping] = useState<Record<string, number>>({})
   const [viewers, setViewers] = useState<string[]>([])
 
   useEffect(() => {
-    if (!open || !code || !meId) return
+    // Created in the browser only, never while the page is pre-rendered on the server
+    const supabase = open && code && meId ? createRealtimeClient() : null
+    if (!supabase || !code || !meId) return
     const ch = supabase.channel(`desk_ticket_${code}`, { config: { broadcast: { self: false }, presence: { key: meId } } })
     ch.on("broadcast", { event: "changed" }, () => {
       qc.invalidateQueries({ queryKey: ["ticket", code] })
@@ -47,7 +48,7 @@ export function useTicketLive(code: string | null, open: boolean, meId: string |
       setViewers([])
       void supabase.removeChannel(ch)
     }
-  }, [supabase, qc, code, open, meId, meName])
+  }, [qc, code, open, meId, meName])
 
   // Typing names fade out a few seconds after the last keystroke
   useEffect(() => {

@@ -1,11 +1,11 @@
 "use client"
 
-import { useEffect, useMemo, useRef } from "react"
+import { useEffect, useRef } from "react"
 import { useSession } from "next-auth/react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { api } from "@/lib/api"
 import { toast } from "@/lib/notice"
-import { createClient } from "@/lib/supabase/client"
+import { createRealtimeClient } from "@/lib/supabase/client"
 
 // A new ticket for my departments (or any, for Admins): the lists reload, a soft tone plays, and while the tab is in the
 // background its title counts them: "(3) New tickets · Support Desk". Coming back to the tab clears it.
@@ -36,7 +36,6 @@ function chime() {
 export function NewTicketAlerts() {
   const { data: session } = useSession()
   const qc = useQueryClient()
-  const supabase = useMemo(() => createClient(), [])
   const meId = session?.user?.id ? Number(session.user.id) : null
   const isAdmin = session?.user?.role === "ADMIN"
   const meQuery = useQuery({
@@ -51,6 +50,9 @@ export function NewTicketAlerts() {
 
   useEffect(() => {
     if (meId === null || (!isAdmin && !departmentIds?.length)) return
+    // Created in the browser only, never while the page is pre-rendered on the server
+    const supabase = createRealtimeClient()
+    if (!supabase) return
     const mine = new Set(departmentIds ?? [])
     const ch = supabase
       .channel("desk_inbox")
@@ -69,7 +71,7 @@ export function NewTicketAlerts() {
       })
       .subscribe()
     return () => void supabase.removeChannel(ch)
-  }, [supabase, qc, meId, isAdmin, departmentIds])
+  }, [qc, meId, isAdmin, departmentIds])
 
   // Back on the tab: the title goes back to normal
   useEffect(() => {
