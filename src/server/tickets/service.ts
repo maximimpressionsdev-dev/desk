@@ -273,7 +273,7 @@ export async function createTicket(input: {
   const issueTitle =
     input.title?.trim() ||
     (issueCategory && issueReason
-      ? `${issueCategory.nameEn} — ${issueReason.nameEn}`
+      ? `${issueCategory.nameEn}: ${issueReason.nameEn}`
       : issueCategory
         ? issueCategory.nameEn
         : "")
@@ -373,7 +373,7 @@ export async function createTicket(input: {
     const url = `${appBaseUrl()}/tickets/${code}`.trim()
     await sendSms({
       to: memberPhones,
-      text: `Desk: New ticket ${code} from ${requester.name} — ${created.title}${url ? ` ${url}` : ""}`,
+      text: `Desk: New ticket ${code} from ${requester.name}: ${created.title}${url ? ` ${url}` : ""}`,
     })
   }
 
@@ -477,7 +477,7 @@ export async function assignTicket(input: {
 
     await sendSms({
       to: assignee.phone || "",
-      text: `Desk: Ticket ${ticket.code} assigned to you — ${ticket.title}`,
+      text: `Desk: Ticket ${ticket.code} assigned to you: ${ticket.title}`,
     })
 
     return updated
@@ -597,7 +597,7 @@ export async function updateTicketStatus(input: {
       const url = `${appBaseUrl()}/tickets/${ticket.code}`.trim()
       await sendSms({
         to: requester.phone || "",
-        text: `Desk: Ticket ${ticket.code} resolved — ${ticket.title}${url ? ` ${url}` : ""}`,
+        text: `Desk: Ticket ${ticket.code} resolved: ${ticket.title}${url ? ` ${url}` : ""}`,
       })
     }
   }
@@ -723,7 +723,7 @@ export async function addComment(input: {
       const url = `${appBaseUrl()}/tickets/${ticket.code}`.trim()
       await sendSms({
         to: user.phone,
-        text: `Desk: You were mentioned on ${ticket.code} — ${body.slice(0, 120)}${url ? ` ${url}` : ""}`,
+        text: `Desk: You were mentioned on ${ticket.code}: ${body.slice(0, 120)}${url ? ` ${url}` : ""}`,
       })
     }
   }

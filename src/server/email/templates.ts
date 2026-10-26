@@ -1,12 +1,19 @@
 import { appBaseUrl } from "@/server/email"
 import { PRIORITY_LABELS, STATUS_LABELS, type TicketPriority, type TicketStatus } from "@/lib/ticket-constants"
 
-const BRAND = "support-desk"
-const ACCENT = "#0f766e"
-const TEXT = "#0f172a"
-const MUTED = "#64748b"
-const BORDER = "#e2e8f0"
-const BG = "#f8fafc"
+// The FactoryOS look (as on the web and in the FactoryOS apps' emails): neutral greys, near-black button, thin borders
+const BRAND = "Support Desk"
+const TEXT = "#0a0a0a"
+const MUTED = "#737373"
+const BORDER = "#e5e5e5"
+const BG = "#fafafa"
+const FONT = "Geist,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
+
+// The FactoryOS mark: four app tiles, one greyed (a table, so every mail app draws it)
+const MARK = `<table role="presentation" cellpadding="0" cellspacing="0" style="background:#171717;border-radius:7px;padding:5px"><tr>
+<td style="width:8px;height:8px;background:#fafafa;border-radius:2px"></td><td style="width:2px"></td><td style="width:8px;height:8px;background:#fafafa;opacity:.45;border-radius:2px"></td></tr>
+<tr><td colspan="3" style="height:2px;line-height:2px;font-size:0">&nbsp;</td></tr>
+<tr><td style="width:8px;height:8px;background:#fafafa;border-radius:2px"></td><td style="width:2px"></td><td style="width:8px;height:8px;background:#fafafa;border-radius:2px"></td></tr></table>`
 
 function escapeHtml(value: string) {
   return value
@@ -32,15 +39,15 @@ function detailRows(rows: DetailRow[]) {
   const visible = rows.filter((r) => r.value?.trim())
   if (!visible.length) return ""
   return `
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:0 0 20px">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${BORDER};border-radius:12px;padding:4px 16px;margin:0 0 22px">
       ${visible
         .map(
           (r, i) => `
         <tr>
-          <td style="padding:10px 0;border-top:${i === 0 ? `1px solid ${BORDER}` : "none"};border-bottom:1px solid ${BORDER};width:34%;vertical-align:top;color:${MUTED};font-size:13px;line-height:1.4">
+          <td style="padding:10px 0;border-top:${i === 0 ? "none" : "1px solid #f0f0f0"};width:34%;vertical-align:top;color:${MUTED};font-size:14px;line-height:1.4">
             ${escapeHtml(r.label)}
           </td>
-          <td style="padding:10px 0;border-top:${i === 0 ? `1px solid ${BORDER}` : "none"};border-bottom:1px solid ${BORDER};vertical-align:top;color:${TEXT};font-size:14px;line-height:1.45;font-weight:500">
+          <td style="padding:10px 0;border-top:${i === 0 ? "none" : "1px solid #f0f0f0"};vertical-align:top;color:${TEXT};font-size:14px;line-height:1.45;font-weight:500">
             ${escapeHtml(r.value!.trim())}
           </td>
         </tr>`
@@ -56,8 +63,8 @@ function ctaButton(href: string, label: string) {
   return `
     <table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 8px">
       <tr>
-        <td style="border-radius:8px;background:${ACCENT}">
-          <a href="${escapeHtml(href)}" style="display:inline-block;padding:12px 20px;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;letter-spacing:0.01em">
+        <td style="border-radius:12px;background:#171717">
+          <a href="${escapeHtml(href)}" style="display:inline-block;padding:11px 20px;color:#fafafa;text-decoration:none;font-size:14px;font-weight:500">
             ${escapeHtml(label)}
           </a>
         </td>
@@ -79,7 +86,7 @@ function emailShell(opts: {
   const cta =
     opts.ctaHref && opts.ctaLabel ? ctaButton(opts.ctaHref, opts.ctaLabel) : ""
   const intro = opts.intro
-    ? `<p style="margin:0 0 18px;font-size:15px;line-height:1.55;color:${TEXT}">${escapeHtml(opts.intro)}</p>`
+    ? `<p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#525252">${escapeHtml(opts.intro)}</p>`
     : ""
   const body = opts.bodyHtml || ""
   const footer = opts.footerNote
@@ -88,20 +95,25 @@ function emailShell(opts: {
 
   return `<!DOCTYPE html>
 <html lang="en">
-<body style="margin:0;padding:0;background:${BG}">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BG};padding:24px 12px">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap" rel="stylesheet"></head>
+<body style="margin:0;padding:0;background:${BG};font-family:${FONT}">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BG};padding:32px 12px">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid ${BORDER};border-radius:12px;overflow:hidden">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid ${BORDER};border-radius:16px">
           <tr>
-            <td style="padding:18px 24px;background:${ACCENT};color:#ffffff">
-              <p style="margin:0;font-family:Segoe UI,Arial,sans-serif;font-size:13px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;opacity:0.9">${escapeHtml(BRAND)}</p>
+            <td style="padding:18px 28px;border-bottom:1px solid ${BORDER}">
+              <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+                <td style="vertical-align:middle">${MARK}</td>
+                <td style="padding-left:10px;vertical-align:middle;font-size:15px;font-weight:600;color:${TEXT};letter-spacing:-0.01em">FactoryOS <span style="font-weight:400;color:${MUTED}">${escapeHtml(BRAND)}</span></td>
+              </tr></table>
             </td>
           </tr>
           <tr>
-            <td style="padding:28px 24px 24px;font-family:Segoe UI,Arial,sans-serif;color:${TEXT}">
-              <p style="margin:0 0 6px;font-size:12px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:${ACCENT}">${escapeHtml(opts.eyebrow)}</p>
-              <h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;font-weight:700;color:${TEXT}">${escapeHtml(opts.headline)}</h1>
+            <td style="padding:28px;color:${TEXT}">
+              <span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:500;background:#f5f5f5;border:1px solid ${BORDER};color:#404040">${escapeHtml(opts.eyebrow)}</span>
+              <h1 style="margin:14px 0 6px;font-size:20px;line-height:1.3;font-weight:600;letter-spacing:-0.01em;color:${TEXT}">${escapeHtml(opts.headline)}</h1>
               ${intro}
               ${details}
               ${body}
@@ -109,10 +121,10 @@ function emailShell(opts: {
               ${footer}
             </td>
           </tr>
+          <tr>
+            <td style="padding:16px 28px;border-top:1px solid ${BORDER};font-size:12px;line-height:1.5;color:#a3a3a3">Sent by FactoryOS ${escapeHtml(BRAND)}, Maxim Impressions. This is an automatic message, please don't reply to it.</td>
+          </tr>
         </table>
-        <p style="margin:16px 0 0;font-family:Segoe UI,Arial,sans-serif;font-size:11px;color:${MUTED}">
-          Maxim Impressions · ${escapeHtml(BRAND)}
-        </p>
       </td>
     </tr>
   </table>
