@@ -541,7 +541,7 @@ function TicketSheetPanel({
           ) : null}
           <Button size="sm" className="ml-auto">
             <Send data-icon="inline-start" />
-            {mode === "view" ? "Comment" : "Post update"}
+            {"Send"}
           </Button>
         </div>
       </div>

@@ -193,9 +193,9 @@ export const TOUR_FLOWS: Array<{
         titleEn: "Post a progress update",
         titleSi: "ප්‍රගති යාවත්කාලීනයක් එක් කරන්න",
         bodyEn:
-          "Type in the box at the bottom of the ticket and press Post update (or Ctrl + Enter). Tick Internal note for team-only messages — they show in purple. Type @name to notify someone by email, or SMS if they have no email.",
+          "Type in the box at the bottom of the ticket and press Enter or Send (Shift + Enter for a new line). Tick Internal note for team-only messages; they show in purple. Type @name to notify someone by email, or SMS if they have no email.",
         bodySi:
-          "ටිකට් එකේ පහළ ඇති කොටුවේ ලියා Post update ඔබන්න (නැතහොත් Ctrl + Enter). කණ්ඩායමට පමණක් දැකිය යුතු පණිවිඩ සඳහා Internal note සලකුණු කරන්න — ඒවා දම් පැහැයෙන් පෙන්වයි. කෙනෙකුට email මගින් (email නොමැති නම් SMS මගින්) දැනුම් දීමට @නම ලෙස ටයිප් කරන්න.",
+          "ටිකට් එකේ පහළ ඇති කොටුවේ ලියා Enter හෝ Send ඔබන්න (නව පේළියකට Shift + Enter). කණ්ඩායමට පමණක් දැකිය යුතු පණිවිඩ සඳහා Internal note සලකුණු කරන්න. ඒවා දම් පැහැයෙන් පෙන්වයි. කෙනෙකුට email මගින් (email නොමැති නම් SMS මගින්) දැනුම් දීමට @නම ලෙස ටයිප් කරන්න.",
       },
       {
         id: "7",

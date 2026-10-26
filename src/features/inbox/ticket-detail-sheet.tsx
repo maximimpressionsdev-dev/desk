@@ -758,10 +758,13 @@ export function TicketDetailSheet({
                     isInternal && "border-amber-300/60 bg-amber-50/40 dark:bg-amber-950/20"
                   )}
                   onKeyDown={(e) => {
-                    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                      e.preventDefault()
-                      postComment()
-                    }
+                    // Enter sends; Shift+Enter is a new line. Not while typing with an input method, and with the
+                    // @mention list open Enter picks the first person instead.
+                    if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return
+                    e.preventDefault()
+                    const firstMention = showMentions ? (mentionQuery.data || [])[0] : undefined
+                    if (firstMention) insertMention(firstMention.name)
+                    else if (!actionMutation.isPending) postComment()
                   }}
                 />
                 {showMentions && (mentionQuery.data || []).length > 0 ? (
@@ -794,7 +797,7 @@ export function TicketDetailSheet({
                   </label>
                 ) : null}
                 <p className="text-muted-foreground hidden text-[11px] sm:block">
-                  ⌘/Ctrl + Enter
+                  Enter to send · Shift + Enter for a new line
                 </p>
                 <Button
                   className="ml-auto"
@@ -802,7 +805,7 @@ export function TicketDetailSheet({
                   onClick={postComment}
                 >
                   <Send data-icon="inline-start" />
-                  {isInternal ? "Post note" : canAgentAct ? "Post update" : "Comment"}
+                  {isInternal ? "Send note" : "Send"}
                 </Button>
               </div>
             </div>
