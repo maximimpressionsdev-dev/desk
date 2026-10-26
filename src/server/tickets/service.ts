@@ -28,10 +28,17 @@ import {
   ticketUpdatedEmailHtml,
 } from "@/server/email/templates"
 
+// The next number after the highest one used (not the count: deleted tickets would make it repeat an existing code)
 async function nextTicketCode() {
-  const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(tickets)
-  const n = Number(count) + 1
-  return `TKT-${String(n).padStart(4, "0")}`
+  const [{ last }] = await db
+    .select({ last: sql<number>`coalesce(max(substring(${tickets.code} from 'TKT-([0-9]+)')::int), 0)` })
+    .from(tickets)
+  return `TKT-${String(Number(last) + 1).padStart(4, "0")}`
+}
+
+const isDuplicateCode = (err: unknown) => {
+  const cause = (err as { cause?: { code?: string; constraint_name?: string } })?.cause ?? (err as { code?: string; constraint_name?: string })
+  return cause?.code === "23505" && cause?.constraint_name === "tickets_code_uidx"
 }
 
 export async function recordEvent(input: {
@@ -284,24 +291,33 @@ export async function createTicket(input: {
   const [requester] = await db.select().from(users).where(eq(users.id, input.userId)).limit(1)
   if (!requester) throw new ApiError(401, "Unauthorized")
 
-  const code = await nextTicketCode()
-  const [created] = await db
-    .insert(tickets)
-    .values({
-      code,
-      title,
-      description: input.description?.trim() || "",
-      priority: input.priority ?? "MEDIUM",
-      status: "OPEN",
-      departmentId: input.departmentId,
-      ticketTypeId: input.ticketTypeId ?? null,
-      issueCategoryId: issueCategory?.id ?? null,
-      issueReasonId: issueReason?.id ?? null,
-      applicationId: application?.id ?? null,
-      requesterId: input.userId,
-      dueAt: input.dueAt ?? null,
-    })
-    .returning()
+  // Two tickets filed at the same moment can pick the same next code: the second one tries again with the next
+  let code = ""
+  let created: typeof tickets.$inferSelect | undefined
+  for (let attempt = 0; !created; attempt++) {
+    code = await nextTicketCode()
+    try {
+      ;[created] = await db
+        .insert(tickets)
+        .values({
+          code,
+          title,
+          description: input.description?.trim() || "",
+          priority: input.priority ?? "MEDIUM",
+          status: "OPEN",
+          departmentId: input.departmentId,
+          ticketTypeId: input.ticketTypeId ?? null,
+          issueCategoryId: issueCategory?.id ?? null,
+          issueReasonId: issueReason?.id ?? null,
+          applicationId: application?.id ?? null,
+          requesterId: input.userId,
+          dueAt: input.dueAt ?? null,
+        })
+        .returning()
+    } catch (err) {
+      if (!isDuplicateCode(err) || attempt >= 4) throw err
+    }
+  }
 
   await recordEvent({
     ticketId: created.id,
