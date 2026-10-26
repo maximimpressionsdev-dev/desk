@@ -688,6 +688,16 @@ export async function addComment(input: {
         : "Comment added",
   })
 
+  // Open desks of the people on this ticket hear about it: sound, tab count and a notification (not the author; the
+  // requester never for internal notes). Only user ids and the code go out, never the message.
+  const watcherRows = await db.select({ userId: ticketWatchers.userId }).from(ticketWatchers).where(eq(ticketWatchers.ticketId, ticket.id))
+  const notifyIds = new Set(
+    [isInternal ? null : ticket.requesterId, ticket.assigneeId, ...watcherRows.map((w) => w.userId)].filter(
+      (id): id is number => typeof id === "number" && id !== input.actorId
+    )
+  )
+  if (notifyIds.size) broadcast("desk_inbox", "message", { code: ticket.code, userIds: [...notifyIds] })
+
   const { resolveMentions, addWatcher, notifyWatchers } = await import("@/server/tickets/ops")
   const [department] = await db
     .select({ name: departments.name })
