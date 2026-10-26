@@ -1,5 +1,6 @@
 import { and, desc, eq, inArray, lt, sql } from "drizzle-orm"
 import { db } from "@/server/db"
+import { broadcast } from "@/server/realtime"
 import {
   applications,
   attachments,
@@ -308,6 +309,9 @@ export async function createTicket(input: {
     type: "CREATED",
     message: `Ticket created and sent to ${department.name}`,
   })
+
+  // Open desks show it straight away (list, tone, tab title)
+  broadcast("desk_inbox", "created", { code, departmentId: department.id, requesterId: input.userId })
 
   const members = await db
     .select({ id: users.id, email: users.email, phone: users.phone })
