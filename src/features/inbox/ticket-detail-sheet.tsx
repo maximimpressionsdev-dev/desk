@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
+import { useTicketLive } from "./use-ticket-live"
 import { toast } from "@/lib/notice"
 import {
   Ban,
@@ -127,9 +128,11 @@ export function TicketDetailSheet({
     queryKey: ["ticket", code],
     enabled: open && Boolean(code),
     queryFn: async () => api.get(`/api/tickets/${code}`),
-    // While the ticket is open, pick up others' replies and changes every few seconds (paused when the tab is hidden)
-    refetchInterval: open ? 4000 : false,
+    // Others' replies arrive live (useTicketLive); this slow refresh is the safety net, e.g. for changes the server makes
+    refetchInterval: open ? 30_000 : false,
   })
+
+  const live = useTicketLive(code, open, session?.user?.id ? String(session.user.id) : null, session?.user?.name || "Someone")
 
   const ticket = detailQuery.data?.ticket as
     | {
@@ -233,13 +236,14 @@ export function TicketDetailSheet({
   // bottom, so a reply arriving doesn't pull you away from older messages you're reading
   const scrollRef = useRef<HTMLDivElement>(null)
   const nearBottom = useRef(true)
+  const hasDetail = Boolean(detailQuery.data)
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
     const onScroll = () => (nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120)
     el.addEventListener("scroll", onScroll)
     return () => el.removeEventListener("scroll", onScroll)
-  }, [open, Boolean(detailQuery.data)])
+  }, [open, hasDetail])
   useEffect(() => {
     nearBottom.current = true
   }, [open, code])
@@ -275,6 +279,7 @@ export function TicketDetailSheet({
   }, [open, code])
 
   const refresh = async () => {
+    live.notifyChanged()
     await qc.invalidateQueries({ queryKey: ["ticket", code] })
     await qc.invalidateQueries({ queryKey: ["tickets"] })
   }
@@ -331,6 +336,8 @@ export function TicketDetailSheet({
 
   function onCommentChange(value: string) {
     setComment(value)
+    // Others see "typing…", but never for internal notes
+    if (value && !isInternal) live.notifyTyping()
     const match = value.match(/@([a-zA-Z0-9._-]*)$/)
     if (match) {
       setMentionQ(match[1])
@@ -438,6 +445,12 @@ export function TicketDetailSheet({
               {watchers.length > 0 ? (
                 <p className="text-muted-foreground text-[11px]">
                   Watching: {watchers.map((w) => w.name).join(", ")}
+                </p>
+              ) : null}
+              {live.viewers.length > 0 ? (
+                <p className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
+                  <span className="size-1.5 rounded-full bg-emerald-500" />
+                  Also viewing: {live.viewers.join(", ")}
                 </p>
               ) : null}
             </SheetHeader>
@@ -724,6 +737,11 @@ export function TicketDetailSheet({
                 </NativeSelect>
               ) : null}
 
+              {live.typing.length > 0 ? (
+                <p className="text-muted-foreground text-xs">
+                  {live.typing.join(", ")} {live.typing.length === 1 ? "is" : "are"} typing…
+                </p>
+              ) : null}
               <div className="relative">
                 <Textarea
                   value={comment}
