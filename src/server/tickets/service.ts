@@ -236,6 +236,10 @@ export async function createTicket(input: {
   priority?: TicketPriority
   dueAt?: Date | null
 }) {
+  if (!input.description?.trim()) {
+    throw new ApiError(400, "Description is required")
+  }
+
   const [department] = await db
     .select()
     .from(departments)
@@ -430,6 +434,12 @@ export async function assignTicket(input: {
   // Re-assigning to the current owner is a no-op: no event, no emails.
   if ((input.assigneeId ?? null) === (ticket.assigneeId ?? null)) return ticket
 
+  if (ticket.assigneeId && ticket.assigneeId !== input.actorId && !input.isAdmin) {
+    if (input.assigneeId !== input.actorId) {
+      throw new ApiError(403, "Only the assigned agent can reassign this ticket")
+    }
+  }
+
   if (input.assigneeId) {
     const [assignee] = await db
       .select()
@@ -542,6 +552,10 @@ export async function updateTicketStatus(input: {
     isAdmin: input.isAdmin,
     ticket,
   })
+
+  if (ticket.assigneeId && ticket.assigneeId !== input.actorId && !input.isAdmin) {
+    throw new ApiError(403, "Only the assigned agent can change the ticket status")
+  }
 
   const allowed = allowedNextStatuses(ticket.status)
   if (!allowed.includes(input.status) && !input.isAdmin) {

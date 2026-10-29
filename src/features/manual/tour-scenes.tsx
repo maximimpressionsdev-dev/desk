@@ -196,7 +196,7 @@ function NewTicketDialogMock({ highlights }: { highlights: TourHighlight[] }) {
               ))}
             </div>
           </DialogRow>
-          <DialogRow label="Notes">
+          <DialogRow label="Description">
             <Textarea className="min-h-20 resize-none" readOnly value="Floor 2 printer room — cannot connect" />
           </DialogRow>
         </div>

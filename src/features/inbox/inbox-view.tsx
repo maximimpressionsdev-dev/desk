@@ -184,6 +184,7 @@ export function InboxView() {
         t.code.toLowerCase().includes(q) ||
         t.title.toLowerCase().includes(q) ||
         t.departmentName.toLowerCase().includes(q) ||
+        (t.requesterName || "").toLowerCase().includes(q) ||
         (t.assigneeName || "").toLowerCase().includes(q)
     )
   }, [ticketsQuery.data, query, unassignedOnly])
@@ -454,11 +455,12 @@ export function InboxView() {
                       />
                     </TableHead>
                     <TableHead>Ticket</TableHead>
-                    <TableHead className="w-[9rem]">Status</TableHead>
-                    <TableHead className="hidden w-[6.5rem] lg:table-cell">Priority</TableHead>
-                    <TableHead className="w-[12rem]">Assignee</TableHead>
-                    <TableHead className="hidden w-[6.5rem] lg:table-cell">Total time</TableHead>
-                    <TableHead className="hidden w-[7rem] lg:table-cell">Updated</TableHead>
+                    <TableHead className="w-[8.5rem]">Status</TableHead>
+                    <TableHead className="hidden w-[6rem] lg:table-cell">Priority</TableHead>
+                    <TableHead className="w-[10.5rem]">Created by</TableHead>
+                    <TableHead className="w-[10.5rem]">Assignee</TableHead>
+                    <TableHead className="hidden w-[6rem] xl:table-cell">Total time</TableHead>
+                    <TableHead className="hidden w-[6.5rem] lg:table-cell">Updated</TableHead>
                     {tab === "queue" ? <TableHead className="w-[5.5rem]" /> : null}
                   </TableRow>
                 </TableHeader>
@@ -487,7 +489,7 @@ export function InboxView() {
                         <TableCell className="max-w-0 py-2.5">
                           <p className="truncate font-medium">{t.title}</p>
                           <div className="text-muted-foreground mt-0.5 flex items-center gap-1.5 text-xs">
-                            <span className={cn("size-1.5 shrink-0 rounded-full", statusDot(t.status))} />
+                            <span className={cn("size-1.5 shrink-0 rounded-full", statusDot(t.status, t.resolvedAt))} />
                             <span className="font-mono">{t.code}</span>
                             <span aria-hidden>·</span>
                             <span className="truncate">{t.departmentName}</span>
@@ -501,10 +503,13 @@ export function InboxView() {
                           <PriorityBadge priority={t.priority} />
                         </TableCell>
                         <TableCell>
-                          <AssigneeCell name={t.assigneeName} />
+                          <PersonCell name={t.requesterName} fallback="—" />
+                        </TableCell>
+                        <TableCell>
+                          <PersonCell name={t.assigneeName} fallback="Unassigned" />
                         </TableCell>
                         <TableCell
-                          className="hidden text-xs tabular-nums lg:table-cell"
+                          className="hidden text-xs tabular-nums xl:table-cell"
                           title={`Opened ${formatDateTime(t.createdAt)}${
                             t.closedAt ? ` · closed ${formatDateTime(t.closedAt)}` : ""
                           }`}
@@ -578,6 +583,9 @@ export function InboxView() {
                             </span>
                           </div>
                           <p className="font-medium leading-snug">{t.title}</p>
+                          <div className="text-muted-foreground text-xs">
+                            Created by <span className="text-foreground font-medium">{t.requesterName}</span>
+                          </div>
                           <div className="flex flex-wrap items-center gap-1.5">
                             <StatusBadge status={t.status} resolvedAt={t.resolvedAt} />
                             <PriorityBadge priority={t.priority} />
@@ -686,8 +694,8 @@ function OverdueTag() {
   )
 }
 
-function AssigneeCell({ name }: { name: string | null }) {
-  if (!name) return <span className="text-muted-foreground text-sm">Unassigned</span>
+function PersonCell({ name, fallback = "Unassigned" }: { name: string | null; fallback?: string }) {
+  if (!name) return <span className="text-muted-foreground text-sm">{fallback}</span>
   return (
     <div className="flex min-w-0 items-center gap-2">
       <Avatar size="sm">

@@ -36,13 +36,15 @@ export function StatusBadge({
   resolvedAt?: string | null
 }) {
   const key = status as TicketStatus
-  const label =
-    key === "CLOSED" && resolvedAt ? "Resolved · Closed" : STATUS_LABELS[key] || status
+  const isResolvedClosed = key === "CLOSED" && Boolean(resolvedAt)
+  const label = isResolvedClosed ? "Resolved · Closed" : STATUS_LABELS[key] || status
   return (
     <span
       className={cn(
         "inline-flex h-5 items-center rounded-4xl border px-2 text-[11px] font-medium",
-        statusClass[key] || "bg-muted/40 text-muted-foreground border-border/50"
+        isResolvedClosed
+          ? statusClass.RESOLVED
+          : statusClass[key] || "bg-muted/40 text-muted-foreground border-border/50"
       )}
     >
       {label}
@@ -64,7 +66,10 @@ export function PriorityBadge({ priority }: { priority: string }) {
   )
 }
 
-export function statusDot(status: string) {
+export function statusDot(status: string, resolvedAt?: string | null) {
+  if (status === "CLOSED" && resolvedAt) {
+    return "bg-emerald-400"
+  }
   switch (status) {
     case "OPEN":
       return "bg-sky-400"

@@ -52,10 +52,11 @@ export function TicketList({
 
   return (
     <div className="space-y-2">
-      <div className="text-muted-foreground hidden grid-cols-[7rem_1fr_8rem_7rem_8rem_8rem_1.5rem] gap-3 px-3 text-[11px] font-medium tracking-wider uppercase md:grid">
+      <div className="text-muted-foreground hidden grid-cols-[6.5rem_1fr_7.5rem_8rem_7rem_7.5rem_7.5rem_1.5rem] gap-3 px-3 text-[11px] font-medium tracking-wider uppercase md:grid">
         <span>Code</span>
         <span>Title</span>
         <span>Department</span>
+        <span>Created by</span>
         <span>Status</span>
         <span>Priority</span>
         <span>Updated</span>
@@ -66,20 +67,21 @@ export function TicketList({
           key={t.id}
           href={`/tickets/${t.code}`}
           className={cn(
-            "border-border/40 hover:bg-muted/20 group grid items-center gap-3 rounded-xl border bg-background/50 px-3 py-3 transition-colors md:grid-cols-[7rem_1fr_8rem_7rem_8rem_8rem_1.5rem]"
+            "border-border/40 hover:bg-muted/20 group grid items-center gap-3 rounded-xl border bg-background/50 px-3 py-3 transition-colors md:grid-cols-[6.5rem_1fr_7.5rem_8rem_7rem_7.5rem_7.5rem_1.5rem]"
           )}
         >
           <div className="flex items-center gap-2">
-            <span className={cn("size-1.5 shrink-0 rounded-full", statusDot(t.status))} />
+            <span className={cn("size-1.5 shrink-0 rounded-full", statusDot(t.status, t.resolvedAt))} />
             <span className="font-mono text-[11px] font-medium">{t.code}</span>
           </div>
           <div className="min-w-0">
             <p className="truncate text-sm font-medium">{t.title}</p>
             <p className="text-muted-foreground truncate text-xs md:hidden">
-              {t.departmentName} · {t.assigneeName || "Unassigned"}
+              {t.departmentName} · By {t.requesterName} · {t.assigneeName || "Unassigned"}
             </p>
           </div>
           <p className="text-muted-foreground hidden truncate text-sm md:block">{t.departmentName}</p>
+          <p className="text-muted-foreground hidden truncate text-sm md:block">{t.requesterName}</p>
           <div className="hidden md:block">
             <StatusBadge status={t.status} resolvedAt={t.resolvedAt} />
           </div>

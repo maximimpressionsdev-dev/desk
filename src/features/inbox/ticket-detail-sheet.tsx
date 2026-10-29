@@ -179,6 +179,8 @@ export function TicketDetailSheet({
   const links = (detailQuery.data?.links || []) as TicketLink[]
   const cannedReplies = (detailQuery.data?.cannedReplies || []) as CannedReply[]
   const meId = Number(session?.user?.id)
+  const isAdmin = session?.user?.role === "ADMIN"
+  const isClaimedByOther = Boolean(ticket?.assigneeId && ticket.assigneeId !== meId && !isAdmin)
   const watching = watchers.some((w) => w.userId === meId)
 
   const nextStatuses = useMemo(
@@ -407,9 +409,18 @@ export function TicketDetailSheet({
               <SheetTitle className="text-xl leading-snug font-semibold">
                 {ticket.title}
               </SheetTitle>
-              <SheetDescription className="text-foreground/80 max-h-28 overflow-y-auto whitespace-pre-wrap text-sm">
-                {ticket.description || "No description provided."}
+              <SheetDescription className="sr-only">
+                Ticket {ticket.code}: {ticket.title}
               </SheetDescription>
+
+              <div className="rounded-xl border border-border/70 bg-card p-3.5 shadow-2xs space-y-1.5">
+                <span className="text-muted-foreground text-[10px] font-semibold tracking-wider uppercase">
+                  Description
+                </span>
+                <div className="text-foreground max-h-36 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed break-words">
+                  {ticket.description || "No description provided."}
+                </div>
+              </div>
 
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-xl border bg-muted/30 p-3 text-xs">
                 {ticket.applicationName ? <Meta label="Application" value={ticket.applicationName} /> : null}
@@ -457,7 +468,23 @@ export function TicketDetailSheet({
 
             {canAgentAct ? (
               <div className="shrink-0 space-y-3 border-b bg-background p-4">
-                {nextStatuses.length > 0 ? (
+                {isClaimedByOther ? (
+                  <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/40 p-2.5 text-xs">
+                    <span className="text-muted-foreground">
+                      Claimed by <span className="text-foreground font-medium">{ticket.assigneeName}</span>. Only the owner can change status or close this ticket.
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 shrink-0 text-xs"
+                      disabled={actionMutation.isPending}
+                      onClick={() => actionMutation.mutate({ action: "claim" })}
+                    >
+                      <UserPlus data-icon="inline-start" />
+                      Take over
+                    </Button>
+                  </div>
+                ) : nextStatuses.length > 0 ? (
                   <div className="flex flex-wrap items-center gap-1.5">
                     {nextStatuses
                       .filter((st) => st !== "CANCELLED")
@@ -541,7 +568,7 @@ export function TicketDetailSheet({
                   </div>
                 ) : null}
 
-                {!isTerminalStatus(ticket.status) ? (
+                {!isTerminalStatus(ticket.status) && !isClaimedByOther ? (
                 <div className="flex items-center gap-2">
                   <span className="text-muted-foreground w-12 shrink-0 text-xs">Owner</span>
                   <NativeSelect

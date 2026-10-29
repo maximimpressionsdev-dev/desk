@@ -45,7 +45,7 @@ const createSchema = z.object({
   issueReasonId: z.number().optional().nullable(),
   applicationId: z.number().optional().nullable(),
   title: z.string().max(300).optional(),
-  description: z.string().max(10000).optional(),
+  description: z.string().trim().min(1, "Description is required").max(10000),
   priority: z.enum(TICKET_PRIORITIES).optional(),
   dueAt: z.string().datetime().optional().nullable(),
 })

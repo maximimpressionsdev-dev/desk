@@ -328,6 +328,9 @@ export async function bulkUpdateTickets(input: {
           isAdmin: input.isAdmin,
           ticket: detail.ticket,
         })
+        if (detail.ticket.assigneeId && detail.ticket.assigneeId !== input.actorId && !input.isAdmin) {
+          throw new ApiError(403, "Only the assigned agent can close this ticket")
+        }
         if (detail.ticket.status === "CLOSED" || detail.ticket.status === "CANCELLED") {
           results.push({ code, ok: true })
           continue

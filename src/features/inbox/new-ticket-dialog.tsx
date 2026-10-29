@@ -153,7 +153,7 @@ export function NewTicketDialog({
   const showApp = !!selectedCategory && ISSUES_WITH_APP.some((n) => same(n, selectedCategory.nameEn))
 
   // Reset in the handlers (not effects) so each choice clears the steps after it.
-  const canSubmit = Boolean(departmentId && categoryId && reasonId)
+  const canSubmit = Boolean(departmentId && categoryId && reasonId && description.trim())
 
   function reset() {
     setApplicationId("")
@@ -190,6 +190,10 @@ export function NewTicketDialog({
 
   async function onSubmit(e?: React.FormEvent) {
     e?.preventDefault()
+    if (!description.trim()) {
+      toast.error("Description is required")
+      return
+    }
     if (!canSubmit || loading) return
     setLoading(true)
     try {
@@ -198,7 +202,7 @@ export function NewTicketDialog({
         issueCategoryId: categoryId ? Number(categoryId) : null,
         issueReasonId: reasonId ? Number(reasonId) : null,
         applicationId: showApp && applicationId ? Number(applicationId) : null,
-        description,
+        description: description.trim(),
         priority,
       })
       toast.success(`Ticket ${res.ticket.code} was created`)
@@ -344,14 +348,15 @@ export function NewTicketDialog({
               </div>
             </Field>
 
-            <Field label="Notes" htmlFor="new-ticket-notes">
+            <Field label="Description" htmlFor="new-ticket-description" required>
               <Textarea
-                id="new-ticket-notes"
-                className="min-h-20 resize-y text-sm"
-                rows={2}
+                id="new-ticket-description"
+                className="min-h-24 resize-y text-sm"
+                rows={3}
+                required
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Optional — location, machine, anything that helps"
+                placeholder="Describe the issue, error messages, or details…"
               />
             </Field>
           </div>
@@ -391,16 +396,19 @@ function bilingual(en: string, si: string) {
 function Field({
   label,
   htmlFor,
+  required,
   children,
 }: {
   label: string
   htmlFor?: string
+  required?: boolean
   children: React.ReactNode
 }) {
   return (
     <div className="grid gap-1.5 sm:grid-cols-[6.5rem_1fr] sm:gap-3">
       <Label htmlFor={htmlFor} className="text-muted-foreground self-start text-sm font-medium sm:pt-2.5">
         {label}
+        {required ? <span className="text-destructive ml-0.5">*</span> : null}
       </Label>
       <div className="min-w-0">{children}</div>
     </div>

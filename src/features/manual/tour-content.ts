@@ -87,7 +87,7 @@ export const TOUR_FLOWS: Array<{
         titleEn: "Fill in the ticket form",
         titleSi: "ටිකට් පෝරමය පුරවන්න",
         bodyEn:
-          "Pick the Department, Issue and Sub issue from the dropdowns (English and Sinhala). If an issue has only one sub issue it is filled in for you. Choose a priority, add optional notes, then press Create ticket (or Ctrl + Enter). The department team gets an SMS right away.",
+          "Pick the Department, Issue and Sub issue from the dropdowns (English and Sinhala). If an issue has only one sub issue it is filled in for you. Choose a priority, add a description, then press Create ticket (or Ctrl + Enter). The department team gets an SMS right away.",
         bodySi:
           "Dropdown මගින් Department, Issue සහ Sub issue තෝරන්න (ඉංග්‍රීසි සහ සිංහල). Issue එකකට ඇත්තේ එක් Sub issue එකක් පමණක් නම් එය ස්වයංක්‍රීයව තේරේ. ප්‍රමුඛතාව (Priority) තෝරා, අවශ්‍ය නම් සටහන් එක් කර Create ticket ඔබන්න (නැතහොත් Ctrl + Enter). දෙපාර්තමේන්තු කණ්ඩායමට වහාම SMS එකක් ලැබේ.",
       },
