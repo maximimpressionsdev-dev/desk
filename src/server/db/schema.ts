@@ -221,6 +221,8 @@ export const tickets = pgTable(
     priority: ticketPriorityEnum("priority").notNull().default("MEDIUM"),
     status: ticketStatusEnum("status").notNull().default("OPEN"),
     holdReason: text("hold_reason"),
+    /** Why it was cancelled instead of resolved (required when cancelling) */
+    cancelReason: text("cancel_reason"),
     departmentId: integer("department_id")
       .notNull()
       .references(() => departments.id),
@@ -237,6 +239,7 @@ export const tickets = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     resolvedAt: timestamp("resolved_at", { withTimezone: true }),
     closedAt: timestamp("closed_at", { withTimezone: true }),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
   },
   (t) => [
     uniqueIndex("tickets_code_uidx").on(t.code),

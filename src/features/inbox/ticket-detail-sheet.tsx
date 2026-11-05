@@ -117,6 +117,7 @@ export function TicketDetailSheet({
   const [comment, setComment] = useState("")
   const [isInternal, setIsInternal] = useState(false)
   const [holdReason, setHoldReason] = useState("")
+  const [cancelReason, setCancelReason] = useState("")
   const [pendingStatus, setPendingStatus] = useState<TicketStatus | null>(null)
   const [linkCode, setLinkCode] = useState("")
   // Owner picked in the dropdown but not yet confirmed (tied to the ticket it was picked on).
@@ -143,6 +144,8 @@ export function TicketDetailSheet({
         priority: string
         status: TicketStatus
         holdReason: string | null
+        cancelReason: string | null
+        cancelledAt: string | null
         departmentId: number
         departmentName: string
         requesterName: string
@@ -274,6 +277,7 @@ export function TicketDetailSheet({
       setComment("")
       setIsInternal(false)
       setHoldReason("")
+      setCancelReason("")
       setPendingStatus(null)
       setLinkCode("")
       setShowMentions(false)
@@ -294,6 +298,7 @@ export function TicketDetailSheet({
       toast.success("The ticket was updated")
       setComment("")
       setHoldReason("")
+      setCancelReason("")
       setPendingStatus(null)
       setLinkCode("")
     },
@@ -319,7 +324,8 @@ export function TicketDetailSheet({
   const ownerChanged = ownerValue !== currentOwner
 
   function applyStatus(status: TicketStatus) {
-    if (status === "ON_HOLD") {
+    // Both need a reason first
+    if (status === "ON_HOLD" || status === "CANCELLED") {
       setPendingStatus(status)
       return
     }
@@ -445,6 +451,9 @@ export function TicketDetailSheet({
                 {ticket.holdReason ? (
                   <Meta label="Hold reason" value={ticket.holdReason} />
                 ) : null}
+                {ticket.status === "CANCELLED" && ticket.cancelReason ? (
+                  <Meta label="Cancelled" value={ticket.cancelReason} />
+                ) : null}
                 {ticket.resolvedAt ? (
                   <Meta label="Resolved" value={formatDateTime(ticket.resolvedAt)} />
                 ) : null}
@@ -513,11 +522,7 @@ export function TicketDetailSheet({
                         variant="ghost"
                         className="text-muted-foreground hover:text-destructive ml-auto h-8"
                         disabled={actionMutation.isPending}
-                        onClick={() => {
-                          if (window.confirm(`Cancel ${ticket.code}? This can't be undone.`)) {
-                            applyStatus("CANCELLED")
-                          }
-                        }}
+                        onClick={() => applyStatus("CANCELLED")}
                       >
                         <Ban data-icon="inline-start" />
                         Cancel ticket
@@ -563,6 +568,50 @@ export function TicketDetailSheet({
                         }}
                       >
                         Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+
+                {pendingStatus === "CANCELLED" ? (
+                  <div className="border-destructive/30 bg-destructive/5 flex flex-col gap-2 rounded-lg border p-3">
+                    <p className="text-sm font-medium">Cancel {ticket.code} without resolving it?</p>
+                    <p className="text-muted-foreground text-xs">
+                      The requester is told, with your reason. A cancelled ticket can&apos;t be reopened.
+                    </p>
+                    <Textarea
+                      autoFocus
+                      className="min-h-16 bg-background"
+                      placeholder="Why is this ticket being cancelled?"
+                      value={cancelReason}
+                      maxLength={2000}
+                      onChange={(e) => setCancelReason(e.target.value)}
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setPendingStatus(null)
+                          setCancelReason("")
+                        }}
+                      >
+                        Keep ticket
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        disabled={!cancelReason.trim() || actionMutation.isPending}
+                        onClick={() =>
+                          actionMutation.mutate({
+                            action: "status",
+                            status: "CANCELLED",
+                            cancelReason,
+                          })
+                        }
+                      >
+                        <Ban data-icon="inline-start" />
+                        Cancel ticket
                       </Button>
                     </div>
                   </div>

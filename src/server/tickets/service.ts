@@ -544,6 +544,8 @@ export async function updateTicketStatus(input: {
   ticketId: number
   status: TicketStatus
   holdReason?: string | null
+  /** Required when cancelling: why it's closed without being resolved */
+  cancelReason?: string | null
 }) {
   const [ticket] = await db.select().from(tickets).where(eq(tickets.id, input.ticketId)).limit(1)
   if (!ticket) throw new ApiError(404, "Ticket not found")
@@ -565,6 +567,12 @@ export async function updateTicketStatus(input: {
   if (input.status === "ON_HOLD" && !input.holdReason?.trim()) {
     throw new ApiError(400, "Hold reason is required")
   }
+  const cancelReason = input.cancelReason?.trim() || ""
+  if (input.status === "CANCELLED" && !cancelReason) {
+    throw new ApiError(400, "Say why the ticket is being cancelled")
+  }
+  // The reason that goes with the new status, for the history and the requester's email
+  const reason = input.status === "ON_HOLD" ? input.holdReason!.trim() : input.status === "CANCELLED" ? cancelReason : ""
 
   const patch: Partial<typeof tickets.$inferInsert> = {
     status: input.status,
@@ -574,6 +582,10 @@ export async function updateTicketStatus(input: {
   if (input.status === "RESOLVED") patch.resolvedAt = new Date()
   else if (input.status !== "CLOSED") patch.resolvedAt = null
   if (input.status === "CLOSED") patch.closedAt = new Date()
+  if (input.status === "CANCELLED") {
+    patch.cancelReason = cancelReason
+    patch.cancelledAt = new Date()
+  }
 
   const [updated] = await db
     .update(tickets)
@@ -585,10 +597,8 @@ export async function updateTicketStatus(input: {
     ticketId: ticket.id,
     actorId: input.actorId,
     type: "STATUS",
-    message: `Status changed to ${input.status}${
-      input.status === "ON_HOLD" ? `: ${input.holdReason}` : ""
-    }`,
-    meta: { from: ticket.status, to: input.status },
+    message: `Status changed to ${input.status}${reason ? `: ${reason}` : ""}`,
+    meta: { from: ticket.status, to: input.status, ...(reason ? { reason } : {}) },
   })
 
   const [requester] = await db
@@ -603,10 +613,7 @@ export async function updateTicketStatus(input: {
       .where(eq(departments.id, ticket.departmentId))
       .limit(1)
     const statusText = STATUS_LABELS[input.status] || input.status
-    const summary =
-      input.status === "ON_HOLD" && input.holdReason?.trim()
-        ? `Status is now ${statusText}. Reason: ${input.holdReason.trim()}`
-        : `Status is now ${statusText}.`
+    const summary = reason ? `Status is now ${statusText}. Reason: ${reason}` : `Status is now ${statusText}.`
 
     await sendEmail({
       to: requester.email,
@@ -632,8 +639,8 @@ export async function updateTicketStatus(input: {
     }
   }
 
-  // Let the owner (assignee) know when someone else puts their ticket on hold.
-  if (input.status === "ON_HOLD" && ticket.assigneeId && ticket.assigneeId !== input.actorId) {
+  // Let the owner (assignee) know when someone else puts their ticket on hold or cancels it.
+  if ((input.status === "ON_HOLD" || input.status === "CANCELLED") && ticket.assigneeId && ticket.assigneeId !== input.actorId) {
     const [owner] = await db.select().from(users).where(eq(users.id, ticket.assigneeId)).limit(1)
     if (owner?.email?.trim()) {
       const [actor] = await db
@@ -641,17 +648,18 @@ export async function updateTicketStatus(input: {
         .from(users)
         .where(eq(users.id, input.actorId))
         .limit(1)
-      const summary = `${actor?.name || "Someone"} put this ticket on hold. Reason: ${input.holdReason?.trim()}`
+      const what = input.status === "CANCELLED" ? "cancelled this ticket" : "put this ticket on hold"
+      const summary = `${actor?.name || "Someone"} ${what}. Reason: ${reason}`
       await sendEmail({
         to: owner.email,
-        subject: `[${ticket.code}] On hold · ${ticket.title}`,
+        subject: `[${ticket.code}] ${input.status === "CANCELLED" ? "Cancelled" : "On hold"} · ${ticket.title}`,
         html: ticketUpdatedEmailHtml({
           code: ticket.code,
           title: ticket.title,
           summary,
           status: input.status,
           priority: ticket.priority,
-          updateLabel: "On hold",
+          updateLabel: input.status === "CANCELLED" ? "Cancelled" : "On hold",
         }),
         text: `Ticket ${ticket.code}: ${summary}`,
       })

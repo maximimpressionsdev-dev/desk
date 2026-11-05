@@ -41,6 +41,7 @@ export async function POST(req: Request, { params }: Params) {
         userId: z.number().optional(),
         status: z.enum(TICKET_STATUSES).optional(),
         holdReason: z.string().max(2000).optional().nullable(),
+        cancelReason: z.string().max(2000).optional().nullable(),
         body: z.string().max(10000).optional(),
         isProgress: z.boolean().optional(),
         isInternal: z.boolean().optional(),
@@ -73,6 +74,7 @@ export async function POST(req: Request, { params }: Params) {
         ticketId: ticket.id,
         status: body.status as TicketStatus,
         holdReason: body.holdReason,
+        cancelReason: body.cancelReason,
       })
       return NextResponse.json({ ticket: updated })
     }
