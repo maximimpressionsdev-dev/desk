@@ -29,6 +29,7 @@ type ErpEmployee = {
   user_id: string | null
   company_email: string | null
   status: string | null
+  custom_nic_number?: string | null
 }
 
 // An EPF number is short; an ERP record ID typed into the EPF field ("HR-EMP-00003") is not one
@@ -64,6 +65,7 @@ export async function syncDirectoryFromErp(): Promise<DirectorySyncResult> {
       "user_id",
       "company_email",
       "status",
+      "custom_nic_number",
     ]),
   ])
   const result: DirectorySyncResult = {
@@ -127,6 +129,8 @@ export async function syncDirectoryFromErp(): Promise<DirectorySyncResult> {
     if (epf) seenEpf.add(epf)
 
     const phone = normalizePhone(emp.cell_number)
+    // ID number (NIC) lets people sign in with EPF + NIC; it also identifies them across ERP changes
+    const nic = clean(emp.custom_nic_number).toUpperCase().replace(/[\s-]/g, "") || null
     const active = (emp.status || "Active").toLowerCase() === "active"
 
     let [found] = await db
@@ -135,6 +139,7 @@ export async function syncDirectoryFromErp(): Promise<DirectorySyncResult> {
       .where(
         or(
           eq(users.erpEmployee, emp.name),
+          nic ? sql`upper(regexp_replace(coalesce(${users.nic}, ''), '[[:space:]-]', '', 'g')) = ${nic}` : undefined,
           epf ? eq(users.employeeNumber, epf) : undefined,
           erpUser ? or(eq(users.erpUser, erpUser), eq(users.email, erpUser)) : undefined
         )
@@ -178,6 +183,7 @@ export async function syncDirectoryFromErp(): Promise<DirectorySyncResult> {
             ...(erpUser ? { erpUser } : {}),
             ...(phone ? { phone } : {}),
             ...(email ? { email } : {}),
+            ...(nic ? { nic } : {}),
             active: isAdmin ? true : active,
             updatedAt: new Date(),
           })
@@ -193,6 +199,7 @@ export async function syncDirectoryFromErp(): Promise<DirectorySyncResult> {
             erpEmployee: emp.name,
             erpUser,
             phone,
+            nic,
             email: email ?? null,
             role: "USER",
             active,

@@ -44,6 +44,32 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 
+// "@Nimal Perera" in blue. Names can have spaces, so this takes the word after "@" plus up to two capitalised words.
+const MENTION_RE = /(^|\s)(@[\w.-]+(?:\s[A-Z][\w.-]*){0,2})/g
+
+function withMentions(text: string, cls: string, names?: string[]): React.ReactNode {
+  const re = names
+    ? names.length
+      ? new RegExp(`(^|\\s)(@(?:${names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")}))`, "gi")
+      : null
+    : MENTION_RE
+  if (!re) return text
+  const out: React.ReactNode[] = []
+  let last = 0
+  for (const m of text.matchAll(re)) {
+    const start = (m.index ?? 0) + m[1].length
+    if (start > last) out.push(text.slice(last, start))
+    out.push(
+      <span key={start} className={cls}>
+        {m[2]}
+      </span>
+    )
+    last = start + m[2].length
+  }
+  if (last < text.length) out.push(text.slice(last))
+  return out
+}
+
 type Member = { userId: number; name: string }
 
 // Status changes are shown as verbs; `primary` marks the usual next step.
@@ -124,6 +150,8 @@ export function TicketDetailSheet({
   const [pendingOwner, setPendingOwner] = useState<{ code: string; value: string } | null>(null)
   const [mentionQ, setMentionQ] = useState("")
   const [showMentions, setShowMentions] = useState(false)
+  const [picked, setPicked] = useState<string[]>([]) // names chosen from the @ list, shown in blue in the box
+  const mirrorRef = useRef<HTMLDivElement>(null)
 
   const detailQuery = useQuery({
     queryKey: ["ticket", code],
@@ -265,7 +293,7 @@ export function TicketDetailSheet({
 
   const mentionQuery = useQuery({
     queryKey: ["users-search", mentionQ],
-    enabled: showMentions && mentionQ.length >= 1,
+    enabled: showMentions, // a bare "@" lists everyone
     queryFn: async () => {
       const res = await api.get(`/api/users/search?q=${encodeURIComponent(mentionQ)}`)
       return res.users as Array<{ id: number; name: string; email: string }>
@@ -275,6 +303,7 @@ export function TicketDetailSheet({
   useEffect(() => {
     if (!open) {
       setComment("")
+      setPicked([])
       setIsInternal(false)
       setHoldReason("")
       setCancelReason("")
@@ -297,6 +326,7 @@ export function TicketDetailSheet({
       await refresh()
       toast.success("The ticket was updated")
       setComment("")
+      setPicked([])
       setHoldReason("")
       setCancelReason("")
       setPendingStatus(null)
@@ -346,7 +376,8 @@ export function TicketDetailSheet({
     setComment(value)
     // Others see "typing…", but never for internal notes
     if (value && !isInternal) live.notifyTyping()
-    const match = value.match(/@([a-zA-Z0-9._-]*)$/)
+    // "@" at the start or after a space, then the name so far (spaces allowed: "@Nimal Pe")
+    const match = value.match(/(?:^|\s)@([a-zA-Z0-9._ -]{0,40})$/)
     if (match) {
       setMentionQ(match[1])
       setShowMentions(true)
@@ -357,7 +388,8 @@ export function TicketDetailSheet({
   }
 
   function insertMention(name: string) {
-    setComment((prev) => prev.replace(/@([a-zA-Z0-9._-]*)$/, `@${name} `))
+    setComment((prev) => prev.replace(/(^|\s)@([a-zA-Z0-9._ -]{0,40})$/, `$1@${name} `))
+    setPicked((prev) => (prev.includes(name) ? prev : [...prev, name]))
     setShowMentions(false)
   }
 
@@ -819,9 +851,21 @@ export function TicketDetailSheet({
                 </p>
               ) : null}
               <div className="relative">
+                {/* Mirror of the text behind the box, so picked @names show in blue */}
+                <div
+                  ref={mirrorRef}
+                  aria-hidden
+                  className="text-foreground pointer-events-none absolute inset-0 overflow-hidden rounded-xl border border-transparent px-2.5 py-2 text-base break-words whitespace-pre-wrap md:text-sm"
+                >
+                  {withMentions(comment, "font-semibold text-blue-600 dark:text-blue-400", picked)}
+                  {"\n"}
+                </div>
                 <Textarea
                   value={comment}
                   onChange={(e) => onCommentChange(e.target.value)}
+                  onScroll={(e) => {
+                    if (mirrorRef.current) mirrorRef.current.scrollTop = e.currentTarget.scrollTop
+                  }}
                   placeholder={
                     canAgentAct
                       ? isInternal
@@ -830,7 +874,7 @@ export function TicketDetailSheet({
                       : "Write a comment… @name to mention"
                   }
                   className={cn(
-                    "min-h-[56px] resize-none",
+                    "caret-foreground relative min-h-[56px] resize-none text-transparent",
                     isInternal && "border-amber-300/60 bg-amber-50/40 dark:bg-amber-950/20"
                   )}
                   onKeyDown={(e) => {
@@ -853,7 +897,7 @@ export function TicketDetailSheet({
                         onClick={() => insertMention(u.name)}
                       >
                         <span className="font-medium">{u.name}</span>
-                        <span className="text-muted-foreground ml-2 text-xs">{u.email}</span>
+                        <span className="text-muted-foreground ml-2 text-xs">{u.email || "no email"}</span>
                       </button>
                     ))}
                   </div>
@@ -930,7 +974,7 @@ function ChatMessage({
             mine ? "rounded-br-md" : "rounded-bl-md"
           )}
         >
-          {item.body}
+          {withMentions(item.body, mine ? "font-semibold text-sky-200" : "font-semibold text-blue-600 dark:text-blue-400")}
         </div>
       </div>
     </li>
