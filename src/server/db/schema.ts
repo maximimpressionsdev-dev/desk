@@ -35,6 +35,8 @@ export const users = pgTable(
   {
     id: serial("id").primaryKey(),
     name: varchar("name", { length: 200 }).notNull(),
+    /** The ERP's full employee name, set by the directory sync (name is the one people go by) */
+    fullName: varchar("full_name", { length: 200 }),
     email: varchar("email", { length: 320 }),
     passwordHash: text("password_hash"),
     role: userRoleEnum("role").notNull().default("USER"),

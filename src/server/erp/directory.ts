@@ -176,6 +176,7 @@ export async function syncDirectoryFromErp(): Promise<DirectorySyncResult> {
           .set({
             // The desk keeps the name people know (often a calling name); the ERP's formal name only fills a blank
             name: found.name?.trim() ? found.name : name,
+            fullName: name,
             ...(epf ? { employeeNumber: epf } : {}),
             // The ERP has duplicate records for some people (one with the EPF number, one with the login):
             // keep the record with the EPF number, and never drop a login another record supplied
@@ -195,6 +196,7 @@ export async function syncDirectoryFromErp(): Promise<DirectorySyncResult> {
           .insert(users)
           .values({
             name,
+            fullName: name,
             employeeNumber: epf,
             erpEmployee: emp.name,
             erpUser,

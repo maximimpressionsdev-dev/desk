@@ -43,6 +43,8 @@ export async function GET(_req: Request, { params }: Params) {
         departmentCode: detail.departmentCode,
         requesterName: detail.requesterName,
         requesterEmail: detail.requesterEmail,
+        requesterEmployeeNumber: detail.requesterEmployeeNumber,
+        requesterPhone: detail.requesterPhone,
         assigneeName: detail.assigneeName,
         assigneeEmail: detail.assigneeEmail,
         ticketTypeName: detail.ticketTypeName,

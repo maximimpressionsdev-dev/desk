@@ -185,6 +185,7 @@ export function InboxView() {
         t.title.toLowerCase().includes(q) ||
         t.departmentName.toLowerCase().includes(q) ||
         (t.requesterName || "").toLowerCase().includes(q) ||
+        (t.requesterEmployeeNumber || "").toLowerCase().includes(q) ||
         (t.assigneeName || "").toLowerCase().includes(q)
     )
   }, [ticketsQuery.data, query, unassignedOnly])
@@ -503,7 +504,7 @@ export function InboxView() {
                           <PriorityBadge priority={t.priority} />
                         </TableCell>
                         <TableCell>
-                          <PersonCell name={t.requesterName} fallback="—" />
+                          <PersonCell name={t.requesterName} fallback="—" detail={[t.requesterEmployeeNumber ? `EPF ${t.requesterEmployeeNumber}` : "", t.requesterPhone || ""].filter(Boolean).join(" · ")} />
                         </TableCell>
                         <TableCell>
                           <PersonCell name={t.assigneeName} fallback="Unassigned" />
@@ -585,6 +586,8 @@ export function InboxView() {
                           <p className="font-medium leading-snug">{t.title}</p>
                           <div className="text-muted-foreground text-xs">
                             Created by <span className="text-foreground font-medium">{t.requesterName}</span>
+                            {t.requesterEmployeeNumber ? ` · EPF ${t.requesterEmployeeNumber}` : ""}
+                            {t.requesterPhone ? ` · ${t.requesterPhone}` : ""}
                           </div>
                           <div className="flex flex-wrap items-center gap-1.5">
                             <StatusBadge status={t.status} resolvedAt={t.resolvedAt} />
@@ -694,14 +697,17 @@ function OverdueTag() {
   )
 }
 
-function PersonCell({ name, fallback = "Unassigned" }: { name: string | null; fallback?: string }) {
+function PersonCell({ name, fallback = "Unassigned", detail }: { name: string | null; fallback?: string; detail?: string }) {
   if (!name) return <span className="text-muted-foreground text-sm">{fallback}</span>
   return (
     <div className="flex min-w-0 items-center gap-2">
       <Avatar size="sm">
         <AvatarFallback className="text-[10px]">{initials(name)}</AvatarFallback>
       </Avatar>
-      <span className="truncate text-sm">{name}</span>
+      <div className="min-w-0">
+        <span className="block truncate text-sm">{name}</span>
+        {detail ? <span className="text-muted-foreground block truncate text-xs">{detail}</span> : null}
+      </div>
     </div>
   )
 }

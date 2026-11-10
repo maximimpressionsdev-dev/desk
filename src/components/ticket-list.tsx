@@ -17,6 +17,8 @@ export type TicketListItem = {
   departmentName: string
   applicationName?: string | null
   requesterName: string
+  requesterEmployeeNumber?: string | null
+  requesterPhone?: string | null
   assigneeName: string | null
   dueAt: string | null
   resolvedAt?: string | null

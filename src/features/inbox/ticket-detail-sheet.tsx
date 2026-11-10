@@ -177,6 +177,8 @@ export function TicketDetailSheet({
         departmentId: number
         departmentName: string
         requesterName: string
+        requesterEmployeeNumber: string | null
+        requesterPhone: string | null
         assigneeId: number | null
         assigneeName: string | null
         ticketTypeName: string | null
@@ -477,7 +479,10 @@ export function TicketDetailSheet({
                     value={bilingual(ticket.issueReasonNameEn, ticket.issueReasonNameSi || "")}
                   />
                 ) : null}
-                <Meta label="From" value={ticket.requesterName} />
+                <Meta
+                  label="From"
+                  value={[ticket.requesterName, ticket.requesterEmployeeNumber ? `EPF ${ticket.requesterEmployeeNumber}` : "", ticket.requesterPhone || ""].filter(Boolean).join(" · ")}
+                />
                 <Meta label="Owner" value={ticket.assigneeName || "Unassigned"} />
                 {ticket.dueAt ? <Meta label="Due" value={formatDateTime(ticket.dueAt)} /> : null}
                 {ticket.holdReason ? (
@@ -857,7 +862,8 @@ export function TicketDetailSheet({
                   aria-hidden
                   className="text-foreground pointer-events-none absolute inset-0 overflow-hidden rounded-xl border border-transparent px-2.5 py-2 text-base break-words whitespace-pre-wrap md:text-sm"
                 >
-                  {withMentions(comment, "font-semibold text-blue-600 dark:text-blue-400", picked)}
+                  {/* Colour only: a bolder name would be wider than the text typed in the box and push the caret off */}
+                  {withMentions(comment, "text-blue-600 dark:text-blue-400", picked)}
                   {"\n"}
                 </div>
                 <Textarea
