@@ -132,6 +132,13 @@
   html.dark {
     color-scheme: dark;
   }
+  /* A native dropdown's list takes the select's see-through background, so in dark mode it showed light text on white.
+     Give the options a solid background and readable text. */
+  select option,
+  select optgroup {
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+  }
 }
 
 @layer utilities {
